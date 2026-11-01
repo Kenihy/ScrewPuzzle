@@ -1,0 +1,17 @@
+{
+  "name": "나사 너머",
+  "short_name": "나사 너머",
+  "description": "나사를 풀면, 숨겨 둔 마음이 보입니다",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#16121d",
+  "theme_color": "#16121d",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
