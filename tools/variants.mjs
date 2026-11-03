@@ -1,5 +1,5 @@
 /*
- * 나사 너머 — 선택지별 퍼즐 변형 생성기
+ * 하트볼트(Heartbolt) — 선택지별 퍼즐 변형 생성기
  *
  * 사용법: node tools/variants.mjs   (levelgen.mjs 실행 뒤에 실행)
  *

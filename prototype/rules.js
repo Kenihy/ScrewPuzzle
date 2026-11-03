@@ -1,5 +1,5 @@
 /*
- * 나사 너머 — 퍼즐 규칙 엔진 (브라우저와 Node.js 공용)
+ * 하트볼트(Heartbolt) — 퍼즐 규칙 엔진 (브라우저와 Node.js 공용)
  *
  * 판(plank), 구멍(hole), 나사(screw)의 관계와 이동 규칙만 담당합니다.
  * 화면 그리기와 입력 처리는 game.js가, 레벨 생성은 tools/levelgen.mjs가 이 파일을 사용합니다.

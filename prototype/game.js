@@ -1,5 +1,5 @@
 /*
- * 나사 너머 — 웹 프로토타입 본체
+ * 하트볼트(Heartbolt) — 웹 프로토타입 본체
  * 화면 전환, 캔버스 렌더링, 입력, 저장, 해금 연출을 담당합니다.
  * 퍼즐 규칙은 rules.js, 캐릭터 데이터는 content.js, 레벨은 levels.js에 있습니다.
  */
@@ -199,7 +199,8 @@
     el.innerHTML = `
       <header class="home-head">
         <div>
-          <h1 class="logo">나사 너머</h1>
+          <p class="logo-en">HEARTBOLT</p>
+          <h1 class="logo"><span class="logo-heart">하트</span><span class="logo-bolt">볼트</span></h1>
           <p class="tagline">${esc(S.ability.name)} — 마음의 나사를 풀고, 애정을 심는다</p>
         </div>
         <button class="icon-btn" data-act="settings" aria-label="설정">${ICON.gear}</button>

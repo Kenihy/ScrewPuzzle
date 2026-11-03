@@ -1,5 +1,5 @@
 /*
- * 나사 너머 — 레벨 생성기
+ * 하트볼트(Heartbolt) — 레벨 생성기
  *
  * 사용법:  node tools/levelgen.mjs                 (전체 재생성, 약 10분)
  *          ONLY=ella-3,mio-5 node tools/levelgen.mjs (지정한 레벨만 재생성, 나머지는 기존 데이터 유지)

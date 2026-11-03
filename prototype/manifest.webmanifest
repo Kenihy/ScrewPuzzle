@@ -1,7 +1,7 @@
 {
-  "name": "나사 너머",
-  "short_name": "나사 너머",
-  "description": "나사를 풀면, 숨겨 둔 마음이 보입니다",
+  "name": "하트볼트 (Heartbolt)",
+  "short_name": "하트볼트",
+  "description": "마음의 나사를 풀고, 애정을 심는다",
   "lang": "ko",
   "start_url": "./",
   "scope": "./",
