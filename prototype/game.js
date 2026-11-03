@@ -31,11 +31,21 @@
     image: svg('<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/>'),
     close: svg('<path d="M6 6l12 12M18 6L6 18"/>'),
     chevron: svg('<path d="M9 5l7 7-7 7"/>'),
+    heart: svg('<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" fill="currentColor" stroke="none"/>'),
+    spark: svg('<path d="M12 3l2.2 6.3L20.5 12l-6.3 2.2L12 21l-2.2-6.8L3.5 12l6.3-2.7z" fill="currentColor" stroke="none"/>'),
   };
 
   /* ---------------- 저장 ---------------- */
-  const SAVE_KEY = 'nasa-neomeo-save-v1';
-  const defaultSave = () => ({ stars: {}, tools: { hammer: 3, hole: 3, hint: 3 }, unlockAll: false, sound: true, seen: {} });
+  const S = window.GAME_STORY;
+  const SAVE_KEY = 'nasa-neomeo-save-v2';
+  const defaultSave = () => ({
+    stars: {},      // 만남별 최고 별 수
+    meet: {},       // 만남 1~4의 마지막 결과 { choice: 'safe'|'deep', stars }
+    hidden: {},     // 진심 선택으로 연 숨은 속마음
+    endings: {},    // 캐릭터별 본 엔딩 { inception, true, parting }
+    tools: { hammer: 3, hole: 3, hint: 3 },
+    unlockAll: false, sound: true, seen: {},
+  });
   let save = loadSave();
   function loadSave() {
     try {
@@ -43,7 +53,7 @@
       if (raw) {
         const d = JSON.parse(raw);
         const base = defaultSave();
-        return Object.assign(base, d, { tools: Object.assign(base.tools, d.tools || {}), seen: d.seen || {} });
+        return Object.assign(base, d, { tools: Object.assign(base.tools, d.tools || {}) });
       }
     } catch (e) { /* 저장소를 쓸 수 없는 환경 */ }
     return defaultSave();
@@ -56,19 +66,35 @@
   const $ = (s, el) => (el || document).querySelector(s);
   const levelId = (cid, n) => cid + '-' + n;
   const charById = (id) => C.characters.find((c) => c.id === id);
+  const routeOf = (ch) => S.routes[ch.id];
   const starsOf = (id) => save.stars[id] || 0;
-  const clearedCount = (ch) => ch.stages.filter((_, i) => starsOf(levelId(ch.id, i + 1)) > 0).length;
   const totalStars = (ch) => ch.stages.reduce((n, _, i) => n + starsOf(levelId(ch.id, i + 1)), 0);
+  const endingCount = (ch) => Object.keys(save.endings[ch.id] || {}).length;
+  const meetDone = (ch, n) => (n < 5 ? !!save.meet[levelId(ch.id, n)] : endingCount(ch) > 0);
+  const clearedCount = (ch) => [1, 2, 3, 4, 5].filter((n) => meetDone(ch, n)).length;
+
+  // 애정 = 주입한 애정(퍼즐 별 수), 진심 = 그녀 자신의 마음(선택지). 만남 1~4의 마지막 결과로 계산합니다.
+  function gauges(ch) {
+    let love = 0, heart = 0;
+    for (let n = 1; n <= 4; n++) {
+      const m = save.meet[levelId(ch.id, n)];
+      if (!m) continue;
+      love += S.rules.inject[m.stars] || 0;
+      heart += S.rules.heart[m.choice] || 0;
+    }
+    return { love: Math.min(100, love), heart: Math.min(100, heart) };
+  }
   function chapterUnlocked(ch) {
     if (save.unlockAll || !ch.unlockAfter) return true;
-    return clearedCount(charById(ch.unlockAfter)) >= ch.stages.length;
+    return !!save.meet[levelId(ch.unlockAfter, 1)];
   }
   function stageUnlocked(ch, n) {
     if (!chapterUnlocked(ch)) return false;
     if (save.unlockAll || n === 1) return true;
-    return starsOf(levelId(ch.id, n - 1)) > 0;
+    if (n < 5) return meetDone(ch, n - 1);
+    return meetDone(ch, 4) && gauges(ch).love >= S.rules.finaleLove;
   }
-  const unlockText = (ch) => `${charById(ch.unlockAfter).name}의 이야기를 끝까지 풀면 열려요`;
+  const unlockText = (ch) => `${charById(ch.unlockAfter).name}와의 첫 만남을 마치면 열려요`;
 
   /* ---------------- 이미지 ---------------- */
   const images = {};
@@ -117,6 +143,7 @@
       else if (kind === 'drop') tone(160, 0.25, 'sine', 0.22, 0, 60);
       else if (kind === 'deny') tone(140, 0.12, 'sawtooth', 0.06, 0);
       else if (kind === 'unlock') { tone(660, 0.1, 'triangle', 0.1, 0); tone(990, 0.16, 'triangle', 0.1, 0.08); }
+      else if (kind === 'inject') { tone(330, 0.5, 'sine', 0.16, 0, 990); tone(1320, 0.4, 'triangle', 0.07, 0.35); tone(1760, 0.5, 'triangle', 0.06, 0.5); }
       else if (kind === 'win') [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.35, 'triangle', 0.11, i * 0.11));
     } catch (e) { /* 소리 재생 불가 환경 */ }
   }
@@ -131,7 +158,7 @@
     toastTimer = setTimeout(() => { el.hidden = true; }, ms || 2200);
   }
   function showScreen(name) {
-    ['home', 'chapter', 'play'].forEach((n) => { $('#screen-' + n).hidden = n !== name; });
+    ['home', 'chapter', 'play', 'scene'].forEach((n) => { $('#screen-' + n).hidden = n !== name; });
     if (name !== 'play') stopLoop();
   }
   function closeSheet() { $('#sheet').hidden = true; $('#sheet').innerHTML = ''; }
@@ -143,7 +170,7 @@
   const starsHtml = (n) => '★'.repeat(n) + `<span class="off">${'★'.repeat(3 - n)}</span>`;
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-  /* ---------------- 라우팅 (#zena, #zena-2 등) ---------------- */
+  /* ---------------- 라우팅 (#zena = 공략 노트, #zena-2 = 만남 2) ---------------- */
   function go(hash) {
     if (location.hash.slice(1) === hash) route();
     else location.hash = hash;
@@ -151,13 +178,16 @@
   function route() {
     closeSheet();
     $('#viewer').hidden = true;
+    stopScene();
+    flowSeq++;
     const h = decodeURIComponent(location.hash.slice(1));
+    if (!h && !save.seen.prologue) return playPrologue();
     const ch = charById(h);
     if (ch) return chapterUnlocked(ch) ? showChapter(ch) : showHome();
     const m = /^([a-z]+)-(\d)$/.exec(h);
     if (m && charById(m[1]) && LV[h]) {
       const c2 = charById(m[1]);
-      if (stageUnlocked(c2, +m[2])) return startPlay(c2, +m[2]);
+      if (stageUnlocked(c2, +m[2])) return startMeeting(c2, +m[2]);
       return go(c2.id);
     }
     showHome();
@@ -170,41 +200,46 @@
       <header class="home-head">
         <div>
           <h1 class="logo">나사 너머</h1>
-          <p class="tagline">${esc(C.subtitle)}</p>
+          <p class="tagline">${esc(S.ability.name)} — 마음의 나사를 풀고, 애정을 심는다</p>
         </div>
         <button class="icon-btn" data-act="settings" aria-label="설정">${ICON.gear}</button>
       </header>
-      <p class="section-label">공략할 마음</p>
+      <p class="section-label">공략할 그녀</p>
       <div class="char-list">${C.characters.map(charCard).join('')}</div>
-      <p class="foot">프로토타입 · 캐릭터 3명 · 스테이지 15개<br>진행 상황은 이 기기의 브라우저에만 저장됩니다</p>`;
+      <p class="foot">연애 시뮬레이션 프로토타입 · 3명 · 만남 15회 · 엔딩 9종<br>진행 상황은 이 기기의 브라우저에만 저장됩니다</p>`;
     showScreen('home');
+  }
+  function gaugeHtml(g, compact) {
+    return `<span class="gauges${compact ? ' compact' : ''}">
+      <span class="gauge love"><span class="gauge-label">${ICON.heart}애정</span><span class="gauge-bar"><i style="width:${g.love}%"></i></span><b>${g.love}</b></span>
+      <span class="gauge heart"><span class="gauge-label">${ICON.spark}진심</span><span class="gauge-bar"><i style="width:${g.heart}%"></i></span><b>${g.heart}</b></span>
+    </span>`;
   }
   function charCard(ch) {
     const open = chapterUnlocked(ch);
-    const pips = ch.stages.map((_, i) => `<span class="pip ${starsOf(levelId(ch.id, i + 1)) ? 'on' : ''}"></span>`).join('');
+    const pips = [1, 2, 3, 4, 5].map((n) => `<span class="pip ${meetDone(ch, n) ? 'on' : ''}"></span>`).join('');
     return `
       <button class="char-card ${open ? '' : 'locked'}" data-${open ? 'go' : 'locked'}="${ch.id}" style="--accent:${ch.accent}">
         <span class="portrait" style="${bgCss(ch, ch.portrait)}"></span>
         ${open ? '' : `<span class="char-lock">${ICON.lock}</span>`}
         <span class="char-info">
           <span class="char-name">${open ? ch.name : '???'}<small>${open ? ch.nameEn : 'LOCKED'}</small></span>
-          <span class="char-role">${open ? `${ch.age} · ${ch.role}` : '아직 만나지 못한 사람'}</span>
-          <span class="char-outer">${open ? '겉: ' + esc(ch.outer) : esc(unlockText(ch))}</span>
-          <span class="char-progress"><span class="pips">${pips}</span><span>★ ${totalStars(ch)}/15</span></span>
+          <span class="char-role">${open ? `${ch.age} · ${esc(ch.role)}` : '아직 마음의 나사가 보이지 않는 사람'}</span>
+          ${open ? gaugeHtml(gauges(ch), true) : `<span class="char-outer">${esc(unlockText(ch))}</span>`}
+          <span class="char-progress"><span class="pips">${pips}</span><span>엔딩 ${endingCount(ch)}/3</span></span>
         </span>
       </button>`;
   }
 
-  /* ---------------- 챕터 ---------------- */
+  /* ---------------- 공략 노트 (캐릭터별 루트) ---------------- */
   function showChapter(ch) {
     const el = $('#screen-chapter');
-    const done = clearedCount(ch);
     const gm = ch.gimmick ? C.gimmicks[ch.gimmick] : null;
     el.style.setProperty('--accent', ch.accent);
     el.innerHTML = `
       <div class="topbar">
-        <button class="icon-btn" data-go="" aria-label="캐릭터 목록으로">${ICON.back}</button>
-        <span class="topbar-title">${ch.name}의 이야기</span>
+        <button class="icon-btn" data-go="" aria-label="그녀 목록으로">${ICON.back}</button>
+        <span class="topbar-title">${ch.name} 공략 노트</span>
         <span class="topbar-spacer"></span>
       </div>
       <section class="chapter-hero">
@@ -213,44 +248,73 @@
           <p class="eyebrow">${ch.nameEn} · ${ch.age} · ${esc(ch.role)}</p>
           <h2 class="hero-name">${ch.name}</h2>
           <p class="hero-outer">겉으로 보이는 모습<strong>${esc(ch.outer)}</strong></p>
-          ${gm ? `<span class="gimmick-chip" title="${esc(gm.desc)}">새 장치 · ${gm.name}</span>` : '<span class="gimmick-chip">기본 규칙 익히기</span>'}
-          <p class="hero-progress">마음 조각 ${done}/5 · ★ ${totalStars(ch)}/15</p>
+          ${gm ? `<span class="gimmick-chip" title="${esc(gm.desc)}">마음의 장치 · ${gm.name}</span>` : '<span class="gimmick-chip">첫 공략 · 기본 규칙</span>'}
         </div>
       </section>
-      <p class="section-label">스테이지</p>
+      ${gaugeHtml(gauges(ch))}
+      <p class="gauge-note">애정은 퍼즐 별 수만큼 주입되고, 진심은 진심에 다가가는 선택으로만 자랍니다. 고백은 애정 ${S.rules.finaleLove} 이상에서 열립니다.</p>
+      <p class="section-label">만남</p>
       <ol class="stage-list">${ch.stages.map((s, i) => stageRow(ch, s, i + 1)).join('')}</ol>
+      <p class="section-label">엔딩</p>
+      <div class="ending-list">${endingRows(ch)}</div>
       <p class="section-label">마음 조각</p>
-      <div class="card-list">${ch.stages.map((s, i) => fragmentHtml(ch, i + 1, starsOf(levelId(ch.id, i + 1)) > 0)).join('')}${bonusHtml(ch)}</div>
-      ${done >= 5 ? `<button class="btn primary wide" data-act="viewer" data-ch="${ch.id}">${ICON.image} 전체 일러스트 보기</button>` : ''}`;
+      <div class="card-list">${ch.stages.map((s, i) => fragmentHtml(ch, i + 1, fragmentOpen(ch, i + 1))).join('')}${bonusHtml(ch)}</div>
+      ${endingCount(ch) ? `<button class="btn primary wide" data-act="viewer" data-ch="${ch.id}">${ICON.image} 전체 일러스트 보기</button>` : ''}`;
     el.scrollTop = 0;
     showScreen('chapter');
   }
+  const fragmentOpen = (ch, n) => (n < 5 ? !!save.meet[levelId(ch.id, n)] : !!(save.endings[ch.id] || {}).true);
   function stageRow(ch, s, n) {
     const id = levelId(ch.id, n);
     const open = stageUnlocked(ch, n);
-    const st = starsOf(id);
-    return `<li><button class="stage-row ${st ? 'cleared' : ''}" ${open ? `data-go="${id}"` : 'disabled'}>
+    const m = save.meet[id];
+    const done = meetDone(ch, n);
+    let sub;
+    if (!open) sub = n === 5 && meetDone(ch, 4) ? `고백하려면 애정 ${S.rules.finaleLove} 필요 (지금 ${gauges(ch).love})` : '앞의 만남을 마치면 열려요';
+    else if (n === 5) sub = done ? `엔딩 ${endingCount(ch)}/3 · 다른 선택으로 다시 볼 수 있어요` : '마지막 선택이 엔딩을 정합니다';
+    else if (m) sub = `${m.choice === 'deep' ? '진심에 다가간 선택' : '안전한 선택'} · 다시 만나면 선택을 바꿀 수 있어요`;
+    else sub = routeOf(ch).meetings[n - 1].place;
+    return `<li><button class="stage-row ${done ? 'cleared' : ''}" ${open ? `data-go="${id}"` : 'disabled'}>
       <span class="stage-num">${n}</span>
-      <span class="stage-title">${open ? esc(s.title) : '잠긴 스테이지'}<small>${open ? (st === 3 ? '별 3개 달성' : st ? '다시 하면 별을 더 모을 수 있어요' : '3별 목표 ' + (LV[id].par + 1) + '번 이동') : '앞 스테이지를 풀면 열려요'}</small></span>
-      ${open ? `<span class="stage-stars">${starsHtml(st)}</span>` : ICON.lock}
+      <span class="stage-title">${open ? esc(n === 5 ? '고백' : s.title) : '잠긴 만남'}<small>${esc(sub)}</small></span>
+      ${open ? `<span class="stage-stars">${starsHtml(starsOf(id))}</span>` : ICON.lock}
     </button></li>`;
+  }
+  function endingRows(ch) {
+    const got = save.endings[ch.id] || {};
+    const eds = routeOf(ch).meetings[4].endings;
+    return ['inception', 'true', 'parting'].map((k) => {
+      const t = S.endingTypes[k];
+      return got[k]
+        ? `<div class="ending-row got ending-${k}"><span class="ending-type">${t.name}</span><strong>${esc(eds[k].title)}</strong></div>`
+        : `<div class="ending-row"><span class="ending-type">${t.name}</span><strong>???</strong><small>${esc(t.hint)}</small></div>`;
+    }).join('');
   }
   function fragmentHtml(ch, n, open) {
     const s = ch.stages[n - 1];
+    const id = levelId(ch.id, n);
+    const hiddenLine = n < 5 ? routeOf(ch).meetings[n - 1].hidden : null;
     if (!open) {
-      return `<article class="fragment locked"><p class="fragment-type">마음 조각 ${n} · ${C.cardTypes[n - 1]}</p><h3>???</h3><p class="fragment-body">스테이지 ${n}을 풀면 열려요.</p></article>`;
+      return `<article class="fragment locked"><p class="fragment-type">마음 조각 ${n} · ${C.cardTypes[n - 1]}</p><h3>???</h3><p class="fragment-body">${n < 5 ? `만남 ${n}을 마치면 열려요.` : '진심 엔딩에서 열려요.'}</p></article>`;
+    }
+    let hiddenHtml = '';
+    if (hiddenLine) {
+      hiddenHtml = save.hidden[id]
+        ? `<p class="fragment-hidden"><span>숨은 속마음</span>‘${esc(hiddenLine)}’</p>`
+        : '<p class="fragment-hidden locked"><span>숨은 속마음</span>진심에 다가가는 선택으로 퍼즐을 풀면 열려요.</p>';
     }
     return `<article class="fragment">
       <p class="fragment-type">마음 조각 ${n} · ${C.cardTypes[n - 1]}</p>
       <h3>${esc(s.title)}</h3>
       ${s.card.quote ? `<p class="fragment-quote">${esc(s.card.quote)}</p>` : ''}
       <p class="fragment-body">${esc(s.card.body)}</p>
+      ${hiddenHtml}
     </article>`;
   }
   function bonusHtml(ch) {
     const stars = totalStars(ch);
     if (stars < 15) {
-      return `<article class="fragment locked"><p class="fragment-type">비밀 메모 · 별 15개</p><h3>???</h3><p class="fragment-body">모든 스테이지에서 별 3개를 받으면 열려요. (지금 ★ ${stars}/15)</p></article>`;
+      return `<article class="fragment locked"><p class="fragment-type">비밀 메모 · 별 15개</p><h3>???</h3><p class="fragment-body">모든 만남에서 별 3개를 받으면 열려요. (지금 ★ ${stars}/15)</p></article>`;
     }
     return `<article class="fragment bonus"><p class="fragment-type">비밀 메모 · 별 15개 달성</p><h3>${esc(ch.bonus.title)}</h3><p class="fragment-body">${esc(ch.bonus.body)}</p></article>`;
   }
@@ -260,7 +324,7 @@
     const v = $('#viewer');
     v.innerHTML = `
       <img src="${ch.image}" alt="${ch.name}의 전체 일러스트">
-      <p class="viewer-cap"><strong>${ch.name}</strong>${esc(ch.stages[4].title)} — 이면 공개</p>
+      <p class="viewer-cap"><strong>${ch.name}</strong>숨겨 둔 이면</p>
       <button class="btn" data-act="close-viewer">${ICON.close} 닫기</button>`;
     v.hidden = false;
   }
@@ -272,9 +336,224 @@
     openSheet(`
       <h2>설정</h2>
       <div class="setting-row"><span>효과음</span><button class="switch" role="switch" aria-checked="${save.sound}" data-act="toggle-sound" aria-label="효과음"></button></div>
-      <div class="setting-row"><span>모든 스테이지 열기<small>프로토타입 검토용. 잠금 조건을 무시합니다.</small></span><button class="switch" role="switch" aria-checked="${save.unlockAll}" data-act="toggle-unlock" aria-label="모든 스테이지 열기"></button></div>
-      <div class="setting-row"><span>진행 초기화<small>별, 마음 조각, 도구 개수를 처음 상태로 되돌립니다.</small></span><button class="btn" data-act="reset" id="btn-reset">초기화</button></div>
+      <div class="setting-row"><span>모든 만남 열기<small>프로토타입 검토용. 잠금 조건과 고백 조건을 무시합니다.</small></span><button class="switch" role="switch" aria-checked="${save.unlockAll}" data-act="toggle-unlock" aria-label="모든 만남 열기"></button></div>
+      <div class="setting-row"><span>프롤로그 다시 보기</span><button class="btn" data-act="prologue">보기</button></div>
+      <div class="setting-row"><span>진행 초기화<small>애정, 진심, 엔딩, 별, 도구 개수를 처음 상태로 되돌립니다.</small></span><button class="btn" data-act="reset" id="btn-reset">초기화</button></div>
       <div class="actions"><button class="btn primary" data-act="close-sheet">닫기</button></div>`);
+  }
+
+  /* ---------------- 대화 장면 ---------------- */
+  const SC = { lines: [], i: 0, typing: 0, full: '', done: null, choiceResolve: null };
+  let flowSeq = 0;       // 화면을 벗어나면 진행 중이던 대화 흐름을 무효로 만듭니다
+  let current = null;    // 진행 중인 만남 { ch, n, choice, finaleChoice }
+
+  function sceneSpeaker(who, tag) {
+    if (who === 'narr') return null;
+    if (who === 'me') return { name: '나', color: 'var(--brass)' };
+    const c = charById(who);
+    return { name: tag === 'hidden' ? `${c.name}의 속마음` : c.name, color: tag === 'hidden' ? 'var(--heart)' : c.accent };
+  }
+  function showSceneFrame(ch, place) {
+    const bg = $('#scene-bg');
+    if (ch) { bg.setAttribute('style', bgCss(ch, routeOf(ch).scene)); bg.classList.remove('empty'); }
+    else { bg.removeAttribute('style'); bg.classList.add('empty'); }
+    $('#scene-place').textContent = place || '';
+    $('#scene-choices').hidden = true;
+    $('#scene-box').hidden = false;
+    showScreen('scene');
+  }
+  function playLines(lines) {
+    return new Promise((resolve) => {
+      SC.lines = lines; SC.i = 0; SC.done = resolve;
+      showLine();
+    });
+  }
+  function showLine() {
+    const [who, text, tag] = SC.lines[SC.i];
+    const sp = sceneSpeaker(who, tag);
+    const name = $('#scene-name');
+    name.hidden = !sp;
+    if (sp) { name.textContent = sp.name; name.style.background = sp.color; }
+    const thought = who === 'me' && text.charAt(0) === '(';
+    $('#scene-box').className = 'scene-box' + (who === 'narr' ? ' narr' : '') + (thought ? ' thought' : '') + (tag === 'hidden' ? ' hidden-line' : '');
+    const el = $('#scene-text');
+    clearInterval(SC.typing);
+    SC.typing = 0;
+    SC.full = text;
+    if (REDUCED) { el.textContent = text; return; }
+    let n = 0;
+    el.textContent = '';
+    SC.typing = setInterval(() => {
+      n++;
+      el.textContent = text.slice(0, n);
+      if (n >= text.length) { clearInterval(SC.typing); SC.typing = 0; }
+    }, 26);
+  }
+  function advanceScene() {
+    if (!SC.done || SC.choiceResolve) return;
+    if (SC.typing) { clearInterval(SC.typing); SC.typing = 0; $('#scene-text').textContent = SC.full; return; }
+    SC.i++;
+    if (SC.i >= SC.lines.length) { const d = SC.done; SC.done = null; d(); return; }
+    showLine();
+  }
+  function skipScene() {
+    if (!SC.done || SC.choiceResolve) return;
+    clearInterval(SC.typing); SC.typing = 0;
+    const d = SC.done; SC.done = null; d();
+  }
+  function stopScene() {
+    clearInterval(SC.typing); SC.typing = 0;
+    SC.done = null; SC.choiceResolve = null;
+    $('#scene-choices').hidden = true;
+  }
+  function askChoice(opts) {
+    return new Promise((resolve) => {
+      const box = $('#scene-choices');
+      box.innerHTML = opts.map((o) => `<button class="choice ${o.key}" data-choice="${o.key}">${esc(o.label)}${o.note ? `<small>${esc(o.note)}</small>` : ''}</button>`).join('');
+      box.hidden = false;
+      $('#scene-box').hidden = true;
+      SC.choiceResolve = (k) => { SC.choiceResolve = null; box.hidden = true; $('#scene-box').hidden = false; resolve(k); };
+    });
+  }
+
+  /* ---------------- 프롤로그 ---------------- */
+  async function playPrologue() {
+    const tk = ++flowSeq;
+    current = null;
+    showSceneFrame(null, '프롤로그 · 스크류 인셉션');
+    await playLines(S.prologue);
+    if (tk !== flowSeq) return;
+    save.seen.prologue = true;
+    persist();
+    go('');
+  }
+
+  /* ---------------- 만남 진행 ---------------- */
+  async function startMeeting(ch, n) {
+    const tk = ++flowSeq;
+    const mt = routeOf(ch).meetings[n - 1];
+    current = { ch, n, choice: null, finaleChoice: null };
+    showSceneFrame(ch, n < 5 ? `만남 ${n} · ${mt.place}` : `고백 · ${mt.place}`);
+    await playLines(mt.intro);
+    if (tk !== flowSeq) return;
+    if (n < 5) {
+      const lv = LV[levelId(ch.id, n)];
+      const key = await askChoice([
+        { key: 'safe', label: mt.choices.safe.label, note: S.choiceEffect.safe },
+        { key: 'deep', label: mt.choices.deep.label, note: S.choiceEffect.deep[lv.variants.deep.effect] },
+      ]);
+      if (tk !== flowSeq) return;
+      current.choice = key;
+      await playLines([...mt.choices[key].reply, S.wall]);
+    } else {
+      const heart = gauges(ch).heart;
+      const key = await askChoice([
+        { key: 'keep', label: mt.finale.keep.label, note: '→ 인셉션 엔딩' },
+        { key: 'confess', label: mt.finale.confess.label, note: `→ 진심 ${S.rules.trueHeart} 이상이면 진심 엔딩, 미만이면 이별 엔딩 (지금 진심 ${heart})` },
+      ]);
+      if (tk !== flowSeq) return;
+      current.finaleChoice = key;
+      await playLines(mt.finale[key].reply);
+    }
+    if (tk !== flowSeq) return;
+    startPlay(ch, n, current.choice);
+  }
+
+  // 퍼즐을 풀고 인셉션 연출까지 끝난 뒤 호출됩니다.
+  async function finishMeeting() {
+    if (!P || !current || !P.won || $('#screen-play').hidden) return;
+    const tk = ++flowSeq;
+    const { ch, n } = current;
+    const id = levelId(ch.id, n);
+    const mt = routeOf(ch).meetings[n - 1];
+    const stars = calcStars();
+    const moves = P.st.moves, par = P.level.par, usedTools = P.usedTools;
+    const before = gauges(ch);
+    const first = !meetDone(ch, n);
+    save.stars[id] = Math.max(starsOf(id), stars);
+    let reward = '';
+    if (first) {
+      const tool = ['hammer', 'hole', 'hint'][(n - 1) % 3];
+      save.tools[tool]++;
+      reward = `첫 클리어 보상 · <b>${{ hammer: '망치', hole: '구멍 추가', hint: '힌트' }[tool]} +1</b>`;
+    }
+    const summary = { ch, n, stars, moves, par, usedTools, before, reward, first };
+    if (n < 5) {
+      summary.newHidden = current.choice === 'deep' && !save.hidden[id];
+      save.meet[id] = { choice: current.choice, stars };
+      if (current.choice === 'deep') save.hidden[id] = true;
+      persist();
+      summary.after = gauges(ch);
+      summary.choice = current.choice;
+      showSceneFrame(ch, `만남 ${n} · ${mt.place}`);
+      const lines = mt.after.slice();
+      if (current.choice === 'deep') lines.push([ch.id, '‘' + mt.hidden + '’', 'hidden']);
+      await playLines(lines);
+      if (tk !== flowSeq) return;
+      showMeetingResult(summary);
+    } else {
+      const ending = current.finaleChoice === 'keep' ? 'inception' : before.heart >= S.rules.trueHeart ? 'true' : 'parting';
+      summary.ending = ending;
+      summary.isNew = !(save.endings[ch.id] || {})[ending];
+      save.endings[ch.id] = Object.assign(save.endings[ch.id] || {}, { [ending]: true });
+      persist();
+      showSceneFrame(ch, `엔딩 · ${S.endingTypes[ending].name}`);
+      await playLines(mt.endings[ending].lines);
+      if (tk !== flowSeq) return;
+      showEndingResult(summary);
+    }
+  }
+
+  function deltaText(label, a, b) {
+    const d = b - a;
+    return `${label} ${a} → ${b}${d ? ` (${d > 0 ? '+' : ''}${d})` : ''}`;
+  }
+  function showMeetingResult(r) {
+    const { ch, n } = r;
+    showScreen('play');
+    const nextOpen = stageUnlocked(ch, n + 1);
+    const nextBtn = nextOpen
+      ? `<button class="btn primary" data-go="${levelId(ch.id, n + 1)}">${n + 1 === 5 ? '고백하러 가기' : '다음 만남'}</button>`
+      : `<button class="btn primary" data-go="${ch.id}">공략 노트</button>`;
+    let notes = '';
+    if (n + 1 === 5 && !nextOpen) notes += `<p class="reward">고백하려면 애정 ${S.rules.finaleLove}이 필요해요. 지난 만남에서 별을 더 받아 애정을 채우세요.</p>`;
+    if (r.first && n === 1 && C.characters.some((c) => c.unlockAfter === ch.id) && !save.unlockAll) {
+      notes += `<p class="reward">${C.characters.filter((c) => c.unlockAfter === ch.id).map((c) => c.name).join('와 ')}의 마음의 나사도 보이기 시작했어요. 새 공략 대상이 열렸습니다.</p>`;
+    }
+    openSheet(`
+      <div class="result-stars" aria-label="별 ${r.stars}개">${starsHtml(r.stars)}</div>
+      <p class="result-meta">이동 ${r.moves}번 · 3별 목표 ${r.par + 1}번${r.usedTools ? ' · 도구를 쓰면 별은 최대 2개' : ''}</p>
+      <p class="inject-line">${esc(S.ability.name)} · 애정 ${S.rules.inject[r.stars]} 주입</p>
+      ${gaugeHtml(r.after)}
+      <p class="result-meta">${deltaText('애정', r.before.love, r.after.love)} · ${deltaText('진심', r.before.heart, r.after.heart)}</p>
+      ${fragmentHtml(ch, n, true)}
+      ${r.reward ? `<p class="reward">${r.reward}</p>` : ''}
+      ${notes}
+      <div class="actions">
+        <button class="btn" data-act="replay">${ICON.restart} 다시 만나기</button>
+        <button class="btn" data-go="${ch.id}">공략 노트</button>
+        ${nextBtn}
+      </div>`);
+  }
+  function showEndingResult(r) {
+    const { ch, ending } = r;
+    showScreen('play');
+    const ed = routeOf(ch).meetings[4].endings[ending];
+    const note = {
+      inception: '그녀의 마음은 이제 당신 것입니다. 하지만 진짜 이면은 아직 열리지 않았습니다.',
+      parting: '심어 둔 애정을 걷어 내자, 남은 진심이 부족했습니다. 다시 만나 진심에 다가가는 선택을 해 보세요.',
+    }[ending];
+    openSheet(`
+      <p class="ending-badge ending-${ending}">${S.endingTypes[ending].name}${r.isNew ? ' · 새 엔딩' : ''}</p>
+      <h2 class="ending-title">${esc(ed.title)}</h2>
+      <div class="result-stars" aria-label="별 ${r.stars}개">${starsHtml(r.stars)}</div>
+      ${ending === 'true' ? fragmentHtml(ch, 5, true) : `<p class="muted center">${note}</p>`}
+      <p class="result-meta">${ch.name} 엔딩 ${endingCount(ch)}/3</p>
+      ${r.reward ? `<p class="reward">${r.reward}</p>` : ''}
+      <div class="actions">
+        <button class="btn" data-go="${ch.id}">공략 노트</button>
+        <button class="btn primary" data-act="viewer" data-ch="${ch.id}">${ICON.image} 일러스트 보기</button>
+      </div>`);
   }
 
   /* ================================================================
@@ -290,13 +569,17 @@
 
   function mk(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
 
-  function startPlay(ch, n) {
+  // choice: 'safe' | 'deep' | null(고백). 선택지에 맞는 퍼즐 변형을 씁니다.
+  function startPlay(ch, n, choice) {
     const id = levelId(ch.id, n);
-    const level = LV[id];
-    P = { ch, n, id, level, model: R.buildModel(level) };
+    const base = LV[id];
+    const v = choice && base.variants ? base.variants[choice] : null;
+    const level = v ? Object.assign({}, base, { tray: v.tray, par: v.par, screws: v.screws || base.screws }) : base;
+    P = { ch, n, id, level, choice, effect: v ? v.effect : null, model: R.buildModel(level) };
     resetPuzzle();
-    $('#play-title').textContent = `${ch.name} · ${n} / 5`;
-    $('#play-sub').textContent = ch.stages[n - 1].title;
+    const confess = n === 5 && current && current.finaleChoice === 'confess';
+    $('#play-title').textContent = n < 5 ? `${ch.name} · 만남 ${n}` : `${ch.name} · 고백`;
+    $('#play-sub').textContent = n < 5 ? ch.stages[n - 1].title : confess ? '박아 둔 애정 나사를 모두 뽑는다' : '마지막 나사를 박는다';
     $('#screen-play').style.setProperty('--accent', ch.accent);
     showScreen('play');
     layers = null;
@@ -316,6 +599,8 @@
     P.revealGoal = P.model.planks.map(() => 0);
     P.clearT = 0;
     P.clearing = false;
+    P.injectT = 0;
+    P.injecting = false;
     P.won = false;
     P.busy = false;
     P.moving = null;
@@ -342,7 +627,7 @@
   }
   function introCoach() {
     coach('');
-    if (P.id === 'zena-1' && !save.unlockAll) {
+    if (P.id === 'zena-1' && !save.unlockAll && !save.seen.tutorial) {
       P.tutorialStep = 1;
       coach('반짝이는 나사를 눌러 들어 올리세요.');
       return;
@@ -350,14 +635,24 @@
     const g = P.ch.gimmick;
     if (g && P.n === 1 && !save.seen[g]) {
       save.seen[g] = true; persist();
-      coach(`새 장치 · ${C.gimmicks[g].name} — ${C.gimmicks[g].desc}`, 6000);
+      coach(`마음의 장치 · ${C.gimmicks[g].name} — ${C.gimmicks[g].desc}`, 6000);
+      return;
+    }
+    if (P.effect === 'guard' && !save.seen.guard) {
+      save.seen.guard = true; persist();
+      coach('경계 나사 — 그녀가 경계하고 있어요. 다른 나사를 3번 옮기면 풀립니다.', 5000);
+      return;
+    }
+    if (P.choice) {
+      const fx = P.choice === 'safe' ? S.choiceEffect.safe : S.choiceEffect.deep[P.effect];
+      coach(fx, 3000);
     }
   }
   function tutorialEvent(ev) {
     if (!P.tutorialStep) return;
     if (P.tutorialStep === 1 && ev === 'select') { P.tutorialStep = 2; coach('위쪽 보관 구멍이나 비어 있는 구멍을 눌러 옮기세요.'); }
     else if (P.tutorialStep === 2 && ev === 'move') { P.tutorialStep = 3; coach('판을 붙잡은 나사를 모두 빼면 판이 떨어져요.'); }
-    else if (P.tutorialStep >= 2 && ev === 'fall') { P.tutorialStep = 0; coach('판이 사라진 자리에 숨겨진 모습이 선명하게 드러나요.', 3500); }
+    else if (P.tutorialStep >= 2 && ev === 'fall') { P.tutorialStep = 0; save.seen.tutorial = true; persist(); coach('판이 사라진 자리에 숨겨진 모습이 선명하게 드러나요.', 3500); }
   }
 
   /* ---------- HUD·도구 ---------- */
@@ -722,14 +1017,26 @@
     }
     if (iced) {
       const s2 = r * 1.4;
-      c.beginPath(); rr(c, x - s2, yy - s2, s2 * 2, s2 * 2, 6);
-      c.fillStyle = 'rgba(168,222,245,0.62)'; c.fill();
-      c.lineWidth = 1.4; c.strokeStyle = 'rgba(255,255,255,0.9)'; c.stroke();
-      c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = 2;
-      c.beginPath(); c.moveTo(x - s2 + 4, yy - s2 + 9); c.lineTo(x - s2 + 9, yy - s2 + 4); c.stroke();
+      if (s.guard) {
+        // 경계 나사: 붉은 가시 고리
+        c.beginPath(); c.arc(x, yy, s2, 0, Math.PI * 2);
+        c.fillStyle = 'rgba(200,40,70,0.32)'; c.fill();
+        c.lineWidth = 2; c.strokeStyle = 'rgba(255,110,130,0.95)'; c.stroke();
+        for (let a = 0; a < 8; a++) {
+          const ang = a * Math.PI / 4 + 0.2;
+          c.beginPath(); c.moveTo(x + Math.cos(ang) * s2, yy + Math.sin(ang) * s2);
+          c.lineTo(x + Math.cos(ang) * (s2 + 4), yy + Math.sin(ang) * (s2 + 4)); c.stroke();
+        }
+      } else {
+        c.beginPath(); rr(c, x - s2, yy - s2, s2 * 2, s2 * 2, 6);
+        c.fillStyle = 'rgba(168,222,245,0.62)'; c.fill();
+        c.lineWidth = 1.4; c.strokeStyle = 'rgba(255,255,255,0.9)'; c.stroke();
+        c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = 2;
+        c.beginPath(); c.moveTo(x - s2 + 4, yy - s2 + 9); c.lineTo(x - s2 + 9, yy - s2 + 4); c.stroke();
+      }
       const left = s.ice - P.st.moves;
       c.beginPath(); c.arc(x + s2 - 2, yy + s2 - 2, 7.5, 0, Math.PI * 2);
-      c.fillStyle = '#1d4f66'; c.fill();
+      c.fillStyle = s.guard ? '#8a1f38' : '#1d4f66'; c.fill();
       c.fillStyle = '#ffffff'; c.font = '700 10px "IBM Plex Sans KR", system-ui, sans-serif';
       c.textAlign = 'center'; c.textBaseline = 'middle';
       c.fillText(String(left), x + s2 - 2, yy + s2 - 1.5);
@@ -862,6 +1169,76 @@
       const y = m.from[1] + (m.to[1] - m.from[1]) * e - Math.sin(Math.PI * u) * 26 - 7 * (1 - u);
       drawScrew(c, m.sid, x, y, u < 0.85, t);
     }
+    if (P.injectT > 0) drawInception(c);
+  }
+
+  /* ---------- 스크류 인셉션 연출 ---------- */
+  function drawHeartScrew(c, x, y, r, rot, a) {
+    if (a <= 0) return;
+    c.save();
+    c.globalAlpha = Math.min(1, a);
+    c.shadowColor = 'rgba(255,128,153,0.9)';
+    c.shadowBlur = 18 * k;
+    const gr = c.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r);
+    gr.addColorStop(0, '#fff0f4'); gr.addColorStop(0.5, '#ff8fa8'); gr.addColorStop(1, '#a3304f');
+    c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2);
+    c.fillStyle = gr; c.fill();
+    c.shadowBlur = 0;
+    c.lineWidth = 1.5; c.strokeStyle = 'rgba(80,10,30,0.6)'; c.stroke();
+    c.translate(x, y); c.rotate(rot);
+    const h = r * 0.55;
+    c.beginPath();
+    c.moveTo(0, h * 0.9);
+    c.bezierCurveTo(-h * 1.4, -h * 0.1, -h * 0.6, -h * 1.1, 0, -h * 0.4);
+    c.bezierCurveTo(h * 0.6, -h * 1.1, h * 1.4, -h * 0.1, 0, h * 0.9);
+    c.fillStyle = '#5a0f26'; c.fill();
+    c.restore();
+  }
+  function drawInception(c) {
+    const u = P.injectT;
+    const cx = G.boardW / 2, cy = BY + G.boardH * 0.42;
+    const ease = (v) => 1 - Math.pow(1 - v, 3);
+    c.save();
+    c.beginPath(); rr(c, 0, BY, G.boardW, G.boardH, 18); c.clip();
+    c.fillStyle = `rgba(30,6,24,${0.42 * Math.min(1, u * 4)})`;
+    c.fillRect(0, BY, G.boardW, G.boardH);
+    if (P.injectMode === 'extract') {
+      // 박아 두었던 애정 나사들이 빠져나가 흩어집니다
+      for (let i = 0; i < 4; i++) {
+        const d = Math.max(0, Math.min(1, (u - i * 0.1) / 0.6));
+        if (d <= 0) continue;
+        const sx = 60 + i * 60, sy = BY + 150 + (i % 2) * 90;
+        drawHeartScrew(c, sx + (i - 1.5) * 22 * d, sy - ease(d) * 230, 13, d * Math.PI * 6, 1 - d * 0.9);
+      }
+    } else {
+      // 위에서 내려와 → 돌며 박히고 → 분홍 파동이 퍼집니다
+      let y, rot, sc;
+      if (u < 0.35) { const e = ease(u / 0.35); y = BY - 30 + (cy - BY + 30) * e; rot = e * Math.PI; sc = 1.7; }
+      else if (u < 0.7) { const e = (u - 0.35) / 0.35; y = cy; rot = Math.PI + e * Math.PI * 4; sc = 1.7 - 0.6 * e; }
+      else { y = cy; rot = Math.PI * 5; sc = 1.1; }
+      for (let w = 0; w < 2; w++) {
+        const p = (u - 0.68 - w * 0.1) / 0.3;
+        if (p <= 0 || p >= 1) continue;
+        c.beginPath(); c.arc(cx, cy, 18 + p * 150, 0, Math.PI * 2);
+        c.strokeStyle = `rgba(255,128,153,${0.75 * (1 - p)})`;
+        c.lineWidth = 5 * (1 - p) + 1; c.stroke();
+      }
+      drawHeartScrew(c, cx, y, 16 * sc, rot, 1);
+    }
+    const ta = u < 0.5 ? 0 : Math.min(1, (u - 0.5) / 0.2);
+    if (ta > 0) {
+      c.globalAlpha = ta;
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.lineJoin = 'round';
+      c.font = '400 26px "Bagel Fat One", "IBM Plex Sans KR", system-ui, sans-serif';
+      c.lineWidth = 6; c.strokeStyle = 'rgba(30,6,24,0.9)'; c.fillStyle = '#ffd3dd';
+      const title = P.injectMode === 'extract' ? '언스크류' : S.ability.name;
+      c.strokeText(title, cx, cy + 66); c.fillText(title, cx, cy + 66);
+      c.font = '600 14px "IBM Plex Sans KR", system-ui, sans-serif';
+      c.lineWidth = 4; c.fillStyle = '#ffffff';
+      c.strokeText(P.injectLabel, cx, cy + 94); c.fillText(P.injectLabel, cx, cy + 94);
+    }
+    c.restore();
   }
 
   /* ---------- 애니메이션 루프 ---------- */
@@ -884,7 +1261,15 @@
     });
     if (P.clearing) {
       P.clearT = Math.min(1, P.clearT + dt / 1.1);
-      if (P.clearT >= 1 && P.clearing) { P.clearing = false; setTimeout(showResult, 450); }
+      if (P.clearT >= 1) { P.clearing = false; P.injecting = true; P.injectT = 0; sfx('inject'); }
+    }
+    if (P.injecting) {
+      P.injectT = Math.min(1, P.injectT + dt / (REDUCED ? 1.2 : 2.2));
+      if (P.injectT >= 1) {
+        P.injecting = false;
+        const tk = P.token;
+        setTimeout(() => { if (P && P.token === tk) finishMeeting(); }, 400);
+      }
     }
     draw(t);
   }
@@ -938,8 +1323,9 @@
     P.shake = { sid: best.sid, t0: now };
     sfx('deny');
     if (best.status === 'ice') {
-      const left = P.st.screws[best.sid].ice - P.st.moves;
-      coach(`얼어 있어요. 다른 나사를 ${left}번 더 옮기면 녹아요.`, 2200);
+      const sc = P.st.screws[best.sid];
+      const left = sc.ice - P.st.moves;
+      coach(sc.guard ? `그녀가 경계하고 있어요. 다른 나사를 ${left}번 더 옮기면 풀려요.` : `얼어 있어요. 다른 나사를 ${left}번 더 옮기면 녹아요.`, 2200);
     } else if (best.status === 'lock') {
       coach('잠겨 있어요. 열쇠가 그려진 판을 먼저 떨어뜨리세요.', 2200);
     }
@@ -1017,6 +1403,10 @@
       P.won = true;
       updateHud();
       coach('');
+      // 스크류 인셉션 연출 준비: 고백에서 털어놓으면 반대로 '뽑아내는' 연출
+      const confess = P.n === 5 && current && current.finaleChoice === 'confess';
+      P.injectMode = confess ? 'extract' : 'inject';
+      P.injectLabel = confess ? '박아 둔 애정을 모두 뽑아냈다' : P.n === 5 ? '마지막 애정 나사를 박았다' : `애정 ${S.rules.inject[calcStars()]} 주입`;
       const token = P.token;
       setTimeout(() => { if (P && P.token === token) { P.clearing = true; sfx('win'); } }, 700);
       return;
@@ -1032,7 +1422,7 @@
   }
 
   function showStuck(kind) {
-    if (!P || P.won || !$('#sheet').hidden) return;
+    if (!P || P.won || !$('#sheet').hidden || $('#screen-play').hidden) return;
     const t = save.tools;
     openSheet(`
       <h2>${kind === 'none' ? '옮길 나사가 없어요' : '이대로는 풀 수 없어요'}</h2>
@@ -1054,50 +1444,19 @@
     return s;
   }
 
-  function showResult() {
-    if (!P || !P.won || $('#screen-play').hidden) return;
-    const stars = calcStars();
-    const prev = starsOf(P.id);
-    const first = !prev;
-    save.stars[P.id] = Math.max(prev, stars);
-    let reward = '';
-    if (first) {
-      const tool = ['hammer', 'hole', 'hint'][(P.n - 1) % 3];
-      save.tools[tool]++;
-      reward = `첫 클리어 보상 · <b>${{ hammer: '망치', hole: '구멍 추가', hint: '힌트' }[tool]} +1</b>`;
-    }
-    const chapterDone = first && clearedCount(P.ch) === P.ch.stages.length;
-    let unlockMsg = '';
-    if (chapterDone) {
-      const opened = C.characters.filter((c) => c.unlockAfter === P.ch.id).map((c) => c.name);
-      if (opened.length && !save.unlockAll) unlockMsg = `${opened.join('와 ')}의 이야기가 열렸어요.`;
-    }
-    const bonusNow = prev < 3 && stars === 3 && totalStars(P.ch) === 15;
-    persist();
-    updateHud();
-    const s = P.ch.stages[P.n - 1];
-    const last = P.n === P.ch.stages.length;
-    openSheet(`
-      <div class="result-stars" aria-label="별 ${stars}개">${starsHtml(stars)}</div>
-      <p class="result-meta">이동 ${P.st.moves}번 · 3별 목표 ${P.level.par + 1}번${P.usedTools ? ' · 도구를 쓰면 별은 최대 2개' : ''}</p>
-      ${last ? `<p class="reveal-title">${esc(P.ch.name)}의 이면이 드러났습니다</p>` : ''}
-      ${fragmentHtml(P.ch, P.n, true)}
-      ${reward ? `<p class="reward">${reward}</p>` : ''}
-      ${unlockMsg ? `<p class="reward">${esc(unlockMsg)}</p>` : ''}
-      ${bonusNow ? `<p class="reward">별 15개 달성 · <b>비밀 메모</b>가 열렸어요</p>` : ''}
-      <div class="actions">
-        <button class="btn" data-act="restart">${ICON.restart} 다시 하기</button>
-        <button class="btn" data-go="${P.ch.id}">목록</button>
-        ${last
-          ? `<button class="btn primary" data-act="viewer" data-ch="${P.ch.id}">${ICON.image} 일러스트 보기</button>`
-          : `<button class="btn primary" data-go="${levelId(P.ch.id, P.n + 1)}">다음 이야기</button>`}
-      </div>`);
-  }
-
   /* ---------------- 전역 클릭 처리 ---------------- */
   document.addEventListener('click', (e) => {
+    const choice = e.target.closest('[data-choice]');
+    if (choice) {
+      if (SC.choiceResolve) SC.choiceResolve(choice.getAttribute('data-choice'));
+      return;
+    }
     const el = e.target.closest('[data-go],[data-act],[data-locked]');
-    if (!el || el.disabled) return;
+    if (!el) {
+      if (!$('#screen-scene').hidden && !e.target.closest('button') && $('#sheet').hidden) advanceScene();
+      return;
+    }
+    if (el.disabled) return;
     if (el.hasAttribute('data-locked')) { toast(unlockText(charById(el.getAttribute('data-locked')))); return; }
     if (el.hasAttribute('data-go')) { go(el.getAttribute('data-go')); return; }
     const act = el.getAttribute('data-act');
@@ -1105,29 +1464,38 @@
     else if (act === 'close-sheet') closeSheet();
     else if (act === 'toggle-sound') { save.sound = !save.sound; persist(); el.setAttribute('aria-checked', save.sound); }
     else if (act === 'toggle-unlock') { save.unlockAll = !save.unlockAll; persist(); el.setAttribute('aria-checked', save.unlockAll); if (!$('#screen-home').hidden) showHome(); }
+    else if (act === 'prologue') { closeSheet(); save.seen.prologue = false; persist(); go(''); }
     else if (act === 'reset') {
       if (!resetArmed) { resetArmed = true; el.textContent = '한 번 더 누르면 초기화'; return; }
-      save = defaultSave(); persist(); closeSheet(); toast('진행 상황을 초기화했어요.'); showHome();
+      save = defaultSave(); persist(); closeSheet(); toast('진행 상황을 초기화했어요.'); go('');
     }
     else if (act === 'viewer') { closeSheet(); openViewer(charById(el.getAttribute('data-ch'))); }
     else if (act === 'close-viewer') {
       $('#viewer').hidden = true;
-      if (!$('#screen-play').hidden && P) go(P.ch.id);
+      if ($('#screen-chapter').hidden && current) go(current.ch.id);
     }
+    else if (act === 'replay') { closeSheet(); if (current) startMeeting(current.ch, current.n); }
     else if (act === 'restart') { if (P) { resetPuzzle(); introCoach(); } }
     else if (act === 'stuck-hammer') { closeSheet(); if (P.mode !== 'hammer') toggleHammer(); }
     else if (act === 'stuck-hole') { useHole(); afterChange(); }
   });
   $('#btn-back').innerHTML = ICON.back;
   $('#btn-restart').innerHTML = ICON.restart;
+  $('#scene-back').innerHTML = ICON.back;
   $('#btn-back').addEventListener('click', () => { if (P) go(P.ch.id); });
-  $('#btn-restart').addEventListener('click', () => { if (P && !P.busy) { resetPuzzle(); introCoach(); } });
+  $('#btn-restart').addEventListener('click', () => { if (P && !P.busy && !P.won) { resetPuzzle(); introCoach(); } });
+  $('#scene-back').addEventListener('click', () => {
+    if (current) { go(current.ch.id); return; }
+    save.seen.prologue = true; persist(); stopScene(); go('');
+  });
+  $('#scene-skip').addEventListener('click', skipScene);
   $('#tool-hammer').addEventListener('click', toggleHammer);
   $('#tool-hole').addEventListener('click', () => { useHole(); if (P && !P.won) afterChange(); });
   $('#tool-hint').addEventListener('click', useHint);
   $('#viewer').addEventListener('click', (e) => { if (e.target.tagName === 'IMG') e.currentTarget.querySelector('[data-act]').click(); });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') { if (!$('#viewer').hidden) $('#viewer [data-act]').click(); else closeSheet(); }
+    if (e.key === 'Escape') { if (!$('#viewer').hidden) $('#viewer [data-act]').click(); else closeSheet(); return; }
+    if ((e.key === ' ' || e.key === 'Enter') && !$('#screen-scene').hidden && !e.target.closest('button')) { e.preventDefault(); advanceScene(); }
   });
 
   if (window.ResizeObserver) new ResizeObserver(() => { if (!$('#screen-play').hidden) resize(); }).observe($('#stage-wrap'));
@@ -1137,9 +1505,13 @@
   // 검토·자동 테스트용 (브라우저 콘솔에서 __nasa.autoSolve() 실행)
   window.__nasa = {
     get state() { return P; },
+    get save() { return save; },
+    get scene() { return { open: !$('#screen-scene').hidden, choice: !!SC.choiceResolve, line: SC.lines[SC.i] }; },
+    skip: skipScene,
     autoSolve(ms) {
       if (!P) return 'no puzzle';
-      const r = bestPath(P.st);
+      const a = R.minMoves(P.model, P.st, 300000);
+      const r = a ? { status: 'solved', path: a.path } : bestPath(P.st);
       if (r.status !== 'solved') return r.status;
       let i = 0;
       const tick = () => {

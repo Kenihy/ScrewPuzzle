@@ -112,7 +112,7 @@
     };
     lv.screws.forEach((s, id) => {
       const h = model.index.get(ptKey(s.at));
-      st.screws.push({ h, ice: s.ice || 0, lock: !!s.lock });
+      st.screws.push({ h, ice: s.ice || 0, lock: !!s.lock, guard: !!s.guard });  // guard: 선택지로 생긴 경계 나사(규칙은 얼음과 같음)
       st.occ[h] = id;
     });
     settle(model, st);
@@ -123,7 +123,7 @@
     return {
       alive: st.alive.slice(),
       occ: st.occ.slice(),
-      screws: st.screws.map((s) => ({ h: s.h, ice: s.ice, lock: s.lock })),
+      screws: st.screws.map((s) => ({ h: s.h, ice: s.ice, lock: s.lock, guard: s.guard })),
       moves: st.moves,
       tray: st.tray,
     };
@@ -174,7 +174,7 @@
     const n = clone(st);
     const s = n.screws[sid];
     n.occ[s.h] = -1;
-    s.h = h; s.ice = 0; s.lock = false;
+    s.h = h; s.ice = 0; s.lock = false; s.guard = false;
     n.occ[h] = sid;
     n.moves++;
     const fallen = settle(model, n);
