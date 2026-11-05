@@ -213,7 +213,7 @@ button { font: inherit; color: inherit; }
 }
 .stage-wrap { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
 #board { display: block; touch-action: none; max-width: 100%; }
-.tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tools { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
 .tool {
   position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
   min-height: 62px; border-radius: 16px; border: 1px solid var(--line);
@@ -286,12 +286,12 @@ button { font: inherit; color: inherit; }
 .gauge { display: grid; grid-template-columns: 62px 1fr 30px; align-items: center; gap: 8px; font-size: 13px; }
 .gauge-label { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); white-space: nowrap; }
 .gauge-label svg { width: 14px; height: 14px; flex: none; }
-.gauge.love .gauge-label svg { color: var(--heart); }
-.gauge.heart .gauge-label svg { color: var(--brass); }
+.gauge.attraction .gauge-label svg { color: var(--heart); }
+.gauge.trust .gauge-label svg { color: var(--brass); }
 .gauge-bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
 .gauge-bar i { display: block; height: 100%; border-radius: 4px; transition: width .6s ease; }
-.gauge.love .gauge-bar i { background: var(--heart); }
-.gauge.heart .gauge-bar i { background: var(--brass); }
+.gauge.attraction .gauge-bar i { background: var(--heart); }
+.gauge.trust .gauge-bar i { background: var(--brass); }
 .gauge b { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
 .gauges.compact { margin: 2px 0; }
 .gauges.compact .gauge { grid-template-columns: 52px 1fr 26px; font-size: 12px; }
@@ -302,8 +302,8 @@ button { font: inherit; color: inherit; }
 .ending-row { display: grid; gap: 2px; padding: 12px 14px; border-radius: 14px; border: 1.5px dashed var(--line); }
 .ending-row.got { border-style: solid; background: var(--surface); }
 .ending-type { font-size: 11px; font-weight: 700; letter-spacing: .1em; color: var(--muted); }
-.ending-row.got.ending-true .ending-type { color: var(--heart); }
-.ending-row.got.ending-inception .ending-type { color: var(--brass); }
+.ending-row.got.ending-love .ending-type { color: var(--heart); }
+.ending-row.got.ending-exposed .ending-type { color: #ff9a6a; }
 .ending-row strong { font-family: var(--f-heart); font-size: 16px; }
 .ending-row small { font-size: 12px; color: var(--muted); }
 .fragment-hidden { margin: 12px 0 0; padding-top: 10px; border-top: 1px dashed rgba(44,35,48,.25); font-family: var(--f-heart); font-size: 15px; font-weight: 700; line-height: 1.65; color: #8a2f48; }
@@ -313,8 +313,8 @@ button { font: inherit; color: inherit; }
 /* 결과·엔딩 */
 .inject-line { text-align: center; font-family: var(--f-display); font-size: 21px; color: var(--heart); }
 .ending-badge { align-self: center; padding: 5px 14px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--surface-2); border: 1px solid var(--line); }
-.ending-badge.ending-true { color: var(--heart); border-color: var(--heart); }
-.ending-badge.ending-inception { color: var(--brass); border-color: var(--brass); }
+.ending-badge.ending-love { color: var(--heart); border-color: var(--heart); }
+.ending-badge.ending-exposed { color: #ff9a6a; border-color: #ff9a6a; }
 .sheet-card h2.ending-title { text-align: center; font-family: var(--f-heart); font-weight: 700; }
 .center { text-align: center; }
 
@@ -359,9 +359,52 @@ button { font: inherit; color: inherit; }
   font-family: var(--f-heart); font-size: 16px; line-height: 1.55; cursor: pointer;
 }
 .choice small { display: block; margin-top: 6px; font-family: var(--f-ui); font-size: 12px; line-height: 1.45; color: var(--muted); }
-.choice.deep, .choice.confess { border-color: var(--heart); }
-.choice.deep small, .choice.confess small { color: var(--heart); }
+.choice.attract, .choice.accept { border-color: var(--heart); }
+.choice.attract small, .choice.accept small { color: var(--heart); }
+.choice.trust small, .choice.slow small { color: var(--brass); }
+.choice.push { border-style: dashed; }
+.choice.push small { color: #ff9a6a; }
 .choice:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+
+/* 성향 노트 · 추리 */
+.pref-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.pref-tags span { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--surface-2); border: 1px solid var(--accent, var(--line)); color: var(--text); }
+.pref-tags span.unknown { border-style: dashed; border-color: var(--line); color: var(--muted); }
+.gimmick-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.pref-note { display: grid; gap: 10px; padding: 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); }
+.note-role { margin: 0; font-size: 13px; color: var(--muted); }
+.note-role b { color: var(--text); }
+.note-reveal { margin: 0; display: grid; gap: 2px; }
+.note-reveal strong { font-family: var(--f-display); font-weight: 400; font-size: 22px; color: var(--heart); }
+.note-reveal span { font-size: 12px; color: var(--muted); }
+.note-result { margin: 0; font-size: 13px; color: var(--muted); }
+.note-result.ok { color: var(--heart); font-weight: 600; }
+.note-result.miss { color: #ff9a6a; font-weight: 600; }
+.clue-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.clue-list li { padding: 8px 10px; border-radius: 10px; background: var(--surface-2); font-size: 13px; line-height: 1.55; }
+.clue-list li span { display: block; font-size: 10px; font-weight: 700; letter-spacing: .1em; color: var(--muted); }
+.clue-list li.hidden-clue { font-family: var(--f-heart); font-weight: 700; color: #ffd3dd; background: rgba(70,22,46,.7); }
+.pref-chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.pref-chip { display: grid; gap: 2px; text-align: left; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface-2); cursor: pointer; }
+.pref-chip strong { font-size: 14px; }
+.pref-chip small { font-size: 11px; line-height: 1.4; color: var(--muted); }
+.pref-chip.on { border-color: var(--heart); background: rgba(70,22,46,.85); }
+.pref-chip.on strong { color: #ffd3dd; }
+.pref-chip:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+.eyebrow.center { text-align: center; color: var(--heart); }
+.clue-reward span { display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--muted); margin-bottom: 2px; }
+.fragment.heart-card { background: #fbe7ee; }
+.fragment.heart-card h3 { color: #8a2f48; }
+.scene-box.edition-line { min-height: 0; background: rgba(36,30,47,.9); border-style: dashed; }
+.scene-box.edition-line .scene-text { font-family: var(--f-ui); font-size: 13px; color: var(--muted); text-align: center; }
+
+/* 드라이버 비트 버튼 */
+.tool-bit { gap: 0; }
+.tool-bit .bit-sub { font-size: 10px; font-weight: 400; color: var(--muted); }
+.bit-dot { width: 14px; height: 14px; border-radius: 50%; margin-bottom: 2px; }
+.bit-dot.lead { background: radial-gradient(circle at 35% 30%, #fff6d8, #e8b84f 55%, #8c6420); }
+.bit-dot.follow { background: radial-gradient(circle at 35% 30%, #f2f8ff, #a9c3df 55%, #4d6a8a); }
+.tool.hint-glow { border-color: var(--heart); box-shadow: 0 0 0 2px var(--heart); }
 
 @media (prefers-reduced-motion: reduce) {
   .sheet-card, .scene-next { animation: none; }
@@ -389,6 +432,7 @@ button { font: inherit; color: inherit; }
       <button class="tool" id="tool-hammer"></button>
       <button class="tool" id="tool-hole"></button>
       <button class="tool" id="tool-hint"></button>
+      <button class="tool tool-bit" id="tool-bit" hidden></button>
     </div>
   </section>
   <section class="screen scene" id="screen-scene" aria-label="대화" hidden>

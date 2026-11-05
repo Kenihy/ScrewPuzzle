@@ -3,7 +3,9 @@
  *
  * 사용법: node tools/variants.mjs   (levelgen.mjs 실행 뒤에 실행)
  *
- * 대화 선택지에 따라 같은 배치의 퍼즐 조건을 바꿉니다.
+ * 대화 선택지에 따라 같은 배치의 퍼즐 조건을 바꿉니다. (만남 1~5)
+ *  - 만남 1~4: 신뢰 선택 → safe, 끌림·밀어붙이기 선택 → deep
+ *  - 만남 5  : 성향 추리를 맞히면 safe, 틀리면 deep
  *  - safe(안전한 선택)        : 보관 구멍 +1 (쉬워짐)
  *  - deep(진심에 다가가는 선택): 보관 구멍 -1 (어려워짐)
  *    보관 구멍을 줄이면 풀 수 없는 레벨은, 대신 '경계 나사'(얼음과 같은 규칙) 2개를 추가합니다.
@@ -25,11 +27,12 @@ function check(level) {
   const st = R.initialState(model);
   const r = R.solve(model, st, { limit: 300000 });
   if (r.status !== 'solved') return null;
-  const best = R.minMoves(model, st, 250000);
-  return best ? best.moves : r.path.length;
+  const best = R.minMoves(model, st, 60000) || R.minMoves(model, st, 60000, 1.5);
+  return best ? Math.min(best.moves, r.path.length) : r.path.length;
 }
 
 for (const [id, L] of Object.entries(data.levels)) {
+  if (L.stage >= 6) { delete L.variants; continue; } // 만남 6(둘만의 밤)은 선택지 없이 진행
   const base = { tray: L.tray, planks: L.planks, screws: L.screws };
   const safeTray = Math.min(R.MAX_TRAY, L.tray + 1);
   const safePar = check({ ...base, tray: safeTray }) ?? L.par;
@@ -45,7 +48,7 @@ for (const [id, L] of Object.entries(data.levels)) {
     const screws = L.screws.map((s) => ({ ...s }));
     let added = 0;
     screws.forEach((s, i) => {
-      if (added >= 2 || s.ice || s.lock) return;
+      if (added >= 2 || s.ice || s.lock || s.brat) return;
       if (R.isOpen(model, st, st.screws[i].h)) { s.ice = 3; s.guard = true; added++; }
     });
     const par = check({ ...base, screws });
@@ -56,7 +59,7 @@ for (const [id, L] of Object.entries(data.levels)) {
   console.log(id.padEnd(8), 'base', L.tray, 'par', L.par, '| safe', safeTray, 'par', safePar, '| deep', deep.effect, deep.tray, 'par', deep.par);
 }
 
-fs.writeFileSync(jsonPath, JSON.stringify(data, null, 1) + '\n');
+fs.writeFileSync(jsonPath, JSON.stringify(Object.assign({ version: 3 }, data), null, 1) + '\n');
 fs.writeFileSync(path.join(ROOT, 'prototype/levels.js'),
   '// tools/levelgen.mjs, tools/variants.mjs가 자동 생성한 파일입니다. 직접 수정하지 마세요.\nwindow.GAME_LEVELS = ' + JSON.stringify(data.levels) + ';\n');
 console.log('저장 완료');

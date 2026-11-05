@@ -1,8 +1,9 @@
 /*
  * 하트볼트(Heartbolt) — 레벨 생성기
  *
- * 사용법:  node tools/levelgen.mjs                 (전체 재생성, 약 10분)
+ * 사용법:  node tools/levelgen.mjs                 (전체 재생성, 약 10~15분. 이어서 tools/variants.mjs 실행)
  *          ONLY=ella-3,mio-5 node tools/levelgen.mjs (지정한 레벨만 재생성, 나머지는 기존 데이터 유지)
+ *          RESUME=1 node tools/levelgen.mjs          (중간에 멈췄을 때 이어서 생성)
  * 결과물:  prototype/levels.js   (웹 프로토타입이 읽는 파일)
  *          tools/data/levels.json (Unity 등 다른 엔진으로 옮길 때 쓰는 원본 데이터)
  *
@@ -85,7 +86,8 @@ function canAdd(planks, q) {
 }
 
 function genLayout(rng, cfg) {
-  const planks = [];
+  // 만남 5: 가장 깊은 곳(맨 아래)에 하트볼트 판을 먼저 놓습니다.
+  const planks = cfg.heart ? [{ kind: 'panel', a: [1, 2], b: [3, 4], holes: [[1, 2], [3, 2], [1, 4], [3, 4]], heart: true }] : [];
   let tries = 0;
   const target = ri(rng, cfg.planks[0], cfg.planks[1]);
   while (planks.length < target && tries++ < 600) {
@@ -125,22 +127,61 @@ function placeScrews(rng, planks, cfg) {
   return screws;
 }
 
-function applyGimmick(rng, level, cfg) {
-  if (cfg.gimmick === 'ice') {
-    const model = R.buildModel(level);
-    const st = R.initialState(model);
-    // 처음부터 손이 닿는 나사를 우선 얼려야 기믹이 체감됩니다.
-    const order = shuffle(rng, level.screws.map((_, i) => i))
-      .sort((a, b) => (R.isOpen(model, st, st.screws[b].h) ? 1 : 0) - (R.isOpen(model, st, st.screws[a].h) ? 1 : 0));
-    order.slice(0, cfg.gimmickCount).forEach((i) => { level.screws[i].ice = ri(rng, cfg.ice[0], cfg.ice[1]); });
-  }
-  if (cfg.gimmick === 'lock') {
-    const n = level.planks.length;
-    const keyZ = ri(rng, Math.floor(n * 0.25), Math.max(Math.floor(n * 0.25), Math.floor(n * 0.7)));
+// 캐릭터별 기믹 배치. cfg에 적힌 기믹만 적용합니다.
+function applyGimmicks(rng, level, cfg) {
+  const model = R.buildModel(level);
+  const st = R.initialState(model);
+  const openFirst = (ids) => shuffle(rng, ids).sort((a, b) => (R.isOpen(model, st, st.screws[b].h) ? 1 : 0) - (R.isOpen(model, st, st.screws[a].h) ? 1 : 0));
+  const plain = (i) => { const s = level.screws[i]; return !s.ice && !s.lock && !s.brat; };
+  const n = level.planks.length;
+  const normal = level.planks.map((_, z) => z).filter((z) => !level.planks[z].heart);
+
+  // 규칙 나사(미오): 조건(열쇠) 판이 떨어져야 풀림
+  if (cfg.lock) {
+    const keyZ = pick(rng, normal.filter((z) => z >= Math.floor(n * 0.25) && z <= Math.max(Math.floor(n * 0.25), Math.floor(n * 0.7))).concat(normal.slice(0, 1)));
     level.planks[keyZ].key = true;
     const keyHoles = level.planks[keyZ].holes;
-    const cands = shuffle(rng, level.screws.map((_, i) => i)).filter((i) => !hasPt(keyHoles, level.screws[i].at));
-    cands.slice(0, cfg.gimmickCount).forEach((i) => { level.screws[i].lock = true; });
+    shuffle(rng, level.screws.map((_, i) => i)).filter((i) => !hasPt(keyHoles, level.screws[i].at)).slice(0, cfg.lock)
+      .forEach((i) => { level.screws[i].lock = true; });
+  }
+  // 긴장 나사(엘라): 처음부터 손이 닿는 나사를 우선
+  if (cfg.ice) {
+    openFirst(level.screws.map((_, i) => i).filter(plain)).slice(0, cfg.ice.count)
+      .forEach((i) => { level.screws[i].ice = ri(rng, cfg.ice.range[0], cfg.ice.range[1]); });
+  }
+  // 반항 나사(제나): 처음부터 손이 닿는 나사여야 도발이 바로 보입니다
+  if (cfg.brat) {
+    openFirst(level.screws.map((_, i) => i).filter(plain)).slice(0, cfg.brat)
+      .forEach((i) => { level.screws[i].brat = true; });
+  }
+  // 유리 판(제나): 위쪽 층의 판을 투명하게
+  if (cfg.glass) {
+    const top = normal.filter((z) => z >= Math.floor(n * 0.45));
+    shuffle(rng, top).slice(0, cfg.glass).forEach((z) => { level.planks[z].glass = true; });
+  }
+  // 리본 판(엘라): 좌우 대칭인 판 두 장을 우선 묶습니다
+  if (cfg.ribbon) {
+    const pairs = [];
+    for (const a of normal) for (const b of normal) {
+      if (a < b && cellsKey(mirror(level.planks[a])) === cellsKey(level.planks[b])) pairs.push([a, b]);
+    }
+    if (pairs.length < cfg.ribbon) {
+      for (let z = 0; z + 1 < normal.length; z++) pairs.push([normal[z], normal[z + 1]]);
+    }
+    const used = new Set();
+    let tie = 1;
+    for (const [a, b] of shuffle(rng, pairs)) {
+      if (tie > cfg.ribbon || used.has(a) || used.has(b)) continue;
+      level.planks[a].tie = tie; level.planks[b].tie = tie; used.add(a); used.add(b); tie++;
+    }
+  }
+  // 스위치 나사(미오): 머리를 '이끄는 쪽'과 '따르는 쪽'으로 나눕니다
+  if (cfg.switch) {
+    const ids = level.screws.map((_, i) => i).filter((i) => rng() < cfg.switch);
+    ids.forEach((i, k) => { level.screws[i].head = k % 2 ? 'follow' : rng() < 0.5 ? 'lead' : 'follow'; });
+    const heads = level.screws.map((s) => s.head).filter(Boolean);
+    if (!heads.includes('follow') && ids.length) level.screws[ids[0]].head = 'follow';
+    if (!heads.includes('lead') && ids.length > 1) level.screws[ids[1]].head = 'lead';
   }
 }
 
@@ -177,7 +218,7 @@ function playoutRate(model, rng, runs) {
       if (!moves.length) break;
       const falling = moves.filter((m) => m.score >= 10);
       const m = falling.length && rng() < 0.6 ? pick(rng, falling) : pick(rng, moves);
-      st = R.move(model, st, m.sid, m.h).state;
+      st = R.apply(model, st, m).state;
     }
     if (R.won(st)) ok++;
   }
@@ -191,46 +232,51 @@ function evaluate(level, rng) {
   if (st0.alive.some((a) => !a)) return null;
   const first = R.solve(model, st0, { limit: 120000 });
   if (first.status !== 'solved') return null;
-  return { dfsLen: first.path.length, success: playoutRate(model, rng, 300), cover: coverage(level.planks) };
+  return { dfsLen: first.path.length, success: playoutRate(model, rng, PLAYOUTS), cover: coverage(level.planks) };
 }
 
 // 목표 이동 수: A*로 구한 최소 이동 수. 탐색 한도를 넘으면 DFS 풀이 길이로 대신합니다.
 function parOf(level, fallback) {
   const model = R.buildModel(level);
-  const v = R.minMoves(model, R.initialState(model), 400000);
-  return v == null ? fallback : v.moves;
+  const st = R.initialState(model);
+  const v = R.minMoves(model, st, 60000) || R.minMoves(model, st, 60000, 1.5);
+  return v == null ? fallback : Math.min(v.moves, fallback);
 }
 
-// 캐릭터 = 챕터, 스테이지 5개. 성공률 목표가 낮을수록 어렵습니다.
+// 캐릭터 = 챕터, 만남 6개. 성공률 목표가 낮을수록 어렵습니다.
+// 만남 1 기본 → 2 기믹 A → 3 기믹 B → 4 조합(성향 추리) → 5 하트볼트 → 6 둘만의 밤
 const CHAPTERS = [
   {
-    id: 'zena', seed: 1101, gimmick: null,
+    id: 'zena', seed: 1101, // 브랫 × 엑시비셔니스트: 반항 나사, 유리 판
     stages: [
       { planks: [3, 4], tray: 3, target: 0.97, minCover: 0.3 },
-      { planks: [6, 7], tray: 3, target: 0.8, minCover: 0.45 },
-      { planks: [8, 9], tray: 3, target: 0.6, minCover: 0.5 },
-      { planks: [10, 11], tray: 3, target: 0.45, minCover: 0.55 },
-      { planks: [12, 13], tray: 3, target: 0.3, minCover: 0.6 },
+      { planks: [6, 7], tray: 3, target: 0.85, minCover: 0.45, brat: 2 },
+      { planks: [7, 9], tray: 3, target: 0.7, minCover: 0.5, glass: 2, brat: 1 },
+      { planks: [9, 11], tray: 3, target: 0.55, minCover: 0.55, brat: 2, glass: 2 },
+      { planks: [10, 12], tray: 3, target: 0.4, minCover: 0.6, heart: true, brat: 2, glass: 1 },
+      { planks: [9, 11], tray: 3, target: 0.5, minCover: 0.6, brat: 2, glass: 2 },
     ],
   },
   {
-    id: 'ella', seed: 2203, gimmick: 'ice',
+    id: 'ella', seed: 2203, // 서브미시브 × 로프 버니: 긴장 나사, 리본 판
     stages: [
-      { planks: [5, 6], tray: 3, target: 0.85, minCover: 0.4, gimmickCount: 1, ice: [2, 3] },
-      { planks: [7, 8], tray: 3, target: 0.65, minCover: 0.5, gimmickCount: 2, ice: [3, 5] },
-      { planks: [9, 10], tray: 3, target: 0.5, minCover: 0.55, gimmickCount: 2, ice: [4, 6] },
-      { planks: [10, 12], tray: 3, target: 0.35, minCover: 0.58, gimmickCount: 3, ice: [4, 7] },
-      { planks: [12, 14], tray: 3, target: 0.25, minCover: 0.6, gimmickCount: 3, ice: [5, 8] },
+      { planks: [5, 6], tray: 3, target: 0.92, minCover: 0.4 },
+      { planks: [6, 8], tray: 3, target: 0.78, minCover: 0.5, ice: { count: 2, range: [2, 4] } },
+      { planks: [8, 9], tray: 3, target: 0.62, minCover: 0.55, ribbon: 1, ice: { count: 1, range: [3, 4] } },
+      { planks: [9, 11], tray: 3, target: 0.48, minCover: 0.58, ribbon: 2, ice: { count: 2, range: [3, 6] } },
+      { planks: [10, 12], tray: 3, target: 0.36, minCover: 0.6, heart: true, ribbon: 1, ice: { count: 2, range: [4, 7] } },
+      { planks: [9, 11], tray: 3, target: 0.46, minCover: 0.6, ribbon: 2, ice: { count: 2, range: [3, 6] } },
     ],
   },
   {
-    id: 'mio', seed: 3307, gimmick: 'lock',
+    id: 'mio', seed: 3307, // 스위치 × 서비스 탑: 규칙 나사, 스위치 나사
     stages: [
-      { planks: [5, 6], tray: 3, target: 0.85, minCover: 0.4, gimmickCount: 1 },
-      { planks: [7, 8], tray: 3, target: 0.65, minCover: 0.5, gimmickCount: 2 },
-      { planks: [9, 10], tray: 3, target: 0.5, minCover: 0.55, gimmickCount: 2 },
-      { planks: [10, 12], tray: 3, target: 0.35, minCover: 0.58, gimmickCount: 3 },
-      { planks: [12, 14], tray: 3, target: 0.25, minCover: 0.6, gimmickCount: 3 },
+      { planks: [5, 6], tray: 3, target: 0.92, minCover: 0.4 },
+      { planks: [6, 8], tray: 3, target: 0.78, minCover: 0.5, lock: 2 },
+      { planks: [7, 9], tray: 3, target: 0.62, minCover: 0.55, switch: 0.6 },
+      { planks: [9, 11], tray: 3, target: 0.48, minCover: 0.58, lock: 2, switch: 0.5 },
+      { planks: [10, 12], tray: 3, target: 0.36, minCover: 0.6, heart: true, lock: 2, switch: 0.5 },
+      { planks: [9, 11], tray: 3, target: 0.46, minCover: 0.6, lock: 2, switch: 0.6 },
     ],
   },
 ];
@@ -254,16 +300,25 @@ const FIXED = {
 const BASE = { panelRate: 0.4, symRate: 0.75, screwRate: 0.8 };
 const ONLY = process.env.ONLY ? process.env.ONLY.split(',') : null;
 const prevPath = path.join(ROOT, 'tools/data/levels.json');
-const prev = ONLY && fs.existsSync(prevPath) ? JSON.parse(fs.readFileSync(prevPath, 'utf8')).levels : {};
-const ATTEMPTS = Number(process.env.ATTEMPTS || 220);
+const VERSION = 3;
+const RESUME = !!process.env.RESUME;
+const prevFile = fs.existsSync(prevPath) ? JSON.parse(fs.readFileSync(prevPath, 'utf8')) : null;
+const prev = (ONLY || RESUME) && prevFile && prevFile.version === VERSION ? prevFile.levels : {};
+const writeJson = (levels) => {
+  fs.mkdirSync(path.join(ROOT, 'tools/data'), { recursive: true });
+  fs.writeFileSync(prevPath, JSON.stringify({ version: VERSION, grid: R.GRID, levels }, null, 1) + '\n');
+};
+const ATTEMPTS = Number(process.env.ATTEMPTS || 140);
+const PLAYOUTS = Number(process.env.PLAYOUTS || 200);
 
 const out = {};
 for (const ch of CHAPTERS) {
   ch.stages.forEach((sc, si) => {
-    const cfg = { ...BASE, ...sc, gimmick: ch.gimmick };
+    const cfg = { ...BASE, ...sc };
     const rng = mulberry32(ch.seed * 100 + si);
     const lid = ch.id + '-' + (si + 1);
     if (ONLY && !ONLY.includes(lid) && prev[lid]) { out[lid] = prev[lid]; return; }
+    if (RESUME && prev[lid]) { out[lid] = prev[lid]; console.log(lid.padEnd(8), '이전 결과 사용'); return; }
     let best = null;
     if (FIXED[lid]) {
       const level = JSON.parse(JSON.stringify(FIXED[lid]));
@@ -276,7 +331,7 @@ for (const ch of CHAPTERS) {
       if (!planks) continue;
       const level = { tray: cfg.tray, planks, screws: placeScrews(rng, planks, cfg) };
       if (level.screws.length > 22) continue;
-      if (ch.gimmick) applyGimmick(rng, level, cfg);
+      applyGimmicks(rng, level, cfg);
       const ev = evaluate(level, rng);
       if (!ev) continue;
       const coverPenalty = Math.max(0, cfg.minCover - ev.cover) * 3;
@@ -292,14 +347,13 @@ for (const ch of CHAPTERS) {
       planks: best.level.planks, screws: best.level.screws,
       meta: { success: +best.ev.success.toFixed(2), cover: +best.ev.cover.toFixed(2), target: cfg.target },
     };
+    writeJson(out); // 레벨마다 바로 저장해 중간에 멈춰도 결과를 잃지 않습니다
     console.log(id.padEnd(8), 'planks', String(best.level.planks.length).padStart(2), 'screws', String(best.level.screws.length).padStart(2),
       'par', String(best.ev.par).padStart(2), 'success', best.ev.success.toFixed(2), '(목표', cfg.target + ')', 'cover', best.ev.cover.toFixed(2));
   });
 }
 
-fs.mkdirSync(path.join(ROOT, 'tools/data'), { recursive: true });
-const json = JSON.stringify({ grid: R.GRID, levels: out }, null, 1);
-fs.writeFileSync(path.join(ROOT, 'tools/data/levels.json'), json + '\n');
+writeJson(out);
 fs.writeFileSync(path.join(ROOT, 'prototype/levels.js'),
   '// tools/levelgen.mjs가 자동 생성한 파일입니다. 직접 수정하지 마세요.\nwindow.GAME_LEVELS = ' + JSON.stringify(out) + ';\n');
 console.log('저장 완료: prototype/levels.js, tools/data/levels.json');
