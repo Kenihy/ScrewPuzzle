@@ -841,7 +841,8 @@
     bt.hidden = !P.model.hasSwitch;
     if (P.model.hasSwitch) {
       const lead = P.st.bit === 'lead';
-      bt.innerHTML = `<span class="bit-dot ${lead ? 'lead' : 'follow'}"></span><span>비트 · ${lead ? '이끄는 쪽' : '따르는 쪽'}</span><span class="bit-sub">눌러서 바꾸기 (이동 1회)</span>`;
+      bt.innerHTML = `<span class="bit-dot ${lead ? 'lead' : 'follow'}"></span><span>${lead ? '이끄는 ▲' : '따르는 ▼'}</span><span class="bit-sub">비트 바꾸기</span>`;
+      bt.setAttribute('aria-label', `드라이버 비트: ${lead ? '이끄는 쪽' : '따르는 쪽'}. 누르면 바꿉니다(이동 1회).`);
       bt.disabled = P.won || P.busy;
       bt.classList.toggle('hint-glow', !!(P.hint && P.hint.kind === 'bit'));
     }
