@@ -398,6 +398,47 @@ button { font: inherit; color: inherit; }
 .scene-box.edition-line { min-height: 0; background: rgba(36,30,47,.9); border-style: dashed; }
 .scene-box.edition-line .scene-text { font-family: var(--f-ui); font-size: 13px; color: var(--muted); text-align: center; }
 
+/* v0.4: 서서히 채워지는 정보 · 역할 · 앨범 */
+.next-cta { min-height: 54px; font-size: 16px; }
+.next-cta svg { width: 18px; height: 18px; }
+.role-chip { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #1b1520; background: var(--heart); }
+.fact-list { margin: 0; display: grid; gap: 6px; }
+.fact-list div { display: grid; grid-template-columns: 96px 1fr; gap: 10px; padding: 9px 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
+.fact-list dt { font-size: 12px; font-weight: 700; color: var(--muted); }
+.fact-list dd { margin: 0; font-size: 14px; min-width: 0; }
+.step { display: grid; gap: 4px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
+.step-no { font-size: 11px; font-weight: 700; letter-spacing: .1em; color: var(--muted); }
+.step strong { font-family: var(--f-display); font-weight: 400; font-size: 20px; }
+.step.ok strong { color: var(--heart); }
+.step.miss strong { color: #ff9a6a; font-size: 16px; }
+.step-role { font-size: 13px; color: var(--muted); line-height: 1.5; }
+.step .btn { justify-self: start; min-height: 40px; }
+.clue-box summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--muted); padding: 4px 0; }
+.clue-box .clue-list { margin-top: 8px; }
+.album { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.album-item { display: grid; gap: 4px; padding: 0; border: 0; background: none; text-align: center; font-size: 11px; color: var(--muted); cursor: pointer; }
+.album-item.locked { cursor: default; }
+.album-art { position: relative; display: block; width: 100%; aspect-ratio: 3 / 4; border-radius: 12px; overflow: hidden; background-color: var(--surface-2); background-repeat: no-repeat; border: 1px solid var(--line); }
+.album-item.locked .album-art { background: repeating-linear-gradient(135deg, var(--surface) 0 8px, var(--surface-2) 8px 16px); }
+.album-reveal { display: grid; grid-template-columns: 96px 1fr; gap: 12px; align-items: center; padding: 10px; border-radius: 16px; border: 1px solid var(--heart); background: var(--surface-2); text-align: left; cursor: pointer; font-size: 14px; }
+.album-reveal b { display: block; font-size: 11px; letter-spacing: .1em; color: var(--heart); }
+.ability-card { display: grid; gap: 4px; padding: 14px; border-radius: 14px; background: rgba(70,22,46,.85); border: 1px solid var(--heart); text-align: center; }
+.ability-card strong { font-family: var(--f-display); font-weight: 400; font-size: 22px; color: #ffd3dd; }
+.ability-card span { font-size: 14px; }
+.fact-chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.fact-chips-title { width: 100%; text-align: center; font-size: 11px; font-weight: 700; letter-spacing: .1em; color: var(--muted); }
+.fact-chip { padding: 6px 10px; border-radius: 10px; background: var(--surface-2); font-size: 13px; }
+.fact-chip b { margin-right: 6px; color: var(--brass); font-weight: 700; }
+.viewer-art { position: relative; width: min(100%, calc((100vh - 170px) * 0.75)); aspect-ratio: 3 / 4; flex: none; border-radius: 12px; overflow: hidden; background-repeat: no-repeat; }
+/* 역할 이미지 연출 (실제 아트로 바꿀 자리) */
+.album-art::after, .viewer-art::after { content: ""; position: absolute; inset: 0; pointer-events: none; }
+.fx-flare::after { background: linear-gradient(135deg, rgba(255,170,60,.42), transparent 48%); }
+.fx-spotlight::after { background: radial-gradient(circle at 50% 42%, transparent 28%, rgba(10,6,14,.78) 72%); }
+.fx-soft::after { background: linear-gradient(rgba(255,170,200,.2), rgba(120,40,70,.25)); }
+.fx-ribbon::after { background: linear-gradient(115deg, transparent 40%, rgba(255,143,177,.6) 40% 46%, transparent 46% 58%, rgba(255,143,177,.45) 58% 62%, transparent 62%); }
+.fx-pages::after { background: linear-gradient(rgba(232,220,192,.22), rgba(110,80,40,.32)); }
+.fx-split::after { background: linear-gradient(90deg, rgba(232,184,79,.28) 50%, rgba(169,195,223,.28) 50%); }
+
 /* 드라이버 비트 버튼 */
 .tool-bit { gap: 0; }
 .tool-bit .bit-sub { font-size: 10px; font-weight: 400; color: var(--muted); }

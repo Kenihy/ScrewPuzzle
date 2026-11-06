@@ -69,7 +69,10 @@
    * holes[6..]   : 보드 구멍. 판에 뚫린 구멍 위치의 합집합
    * hole.cover   : 그 구멍 위치를 덮는 판 목록(아래→위 순서). hole=true면 그 판에도 구멍이 뚫려 있음
    */
-  function buildModel(level) {
+  // opts.glassPass : 유리 판이 아래 나사·구멍을 막지 않음 (역할 능력 '단 한 명의 관객')
+  // opts.freeBit   : 비트 교체가 이동으로 세지 않음 (역할 능력 '자유로운 비트')
+  function buildModel(level, opts) {
+    opts = opts || {};
     const holes = [];
     for (let t = 0; t < MAX_TRAY; t++) holes.push({ tray: true, slot: t, cover: [] });
     const index = new Map();
@@ -92,7 +95,7 @@
       if (h.tray) return;
       planks.forEach((p) => {
         if (p.cells.some((c) => c[0] === h.i && c[1] === h.j)) {
-          h.cover.push({ p: p.z, hole: p.holeIdx.includes(hi) });
+          h.cover.push({ p: p.z, hole: p.holeIdx.includes(hi), pass: !!(opts.glassPass && p.glass) });
         }
       });
     });
@@ -104,6 +107,7 @@
     return {
       level, holes, planks, index, ties, maxIce,
       keyPlank: planks.findIndex((p) => p.key),
+      freeBit: !!opts.freeBit,
       hasSwitch: screws.some((s) => s.head),
       hasBrat: screws.some((s) => s.brat),
     };
@@ -173,7 +177,7 @@
   function isOpen(model, st, h) {
     const hole = model.holes[h];
     if (hole.tray) return hole.slot < st.tray;
-    for (const c of hole.cover) if (st.alive[c.p] && !c.hole) return false;
+    for (const c of hole.cover) if (st.alive[c.p] && !c.hole && !c.pass) return false;
     return true;
   }
 
@@ -256,7 +260,7 @@
   function toggleBit(model, st) {
     const n = clone(st);
     n.bit = n.bit === 'lead' ? 'follow' : 'lead';
-    n.moves++;
+    if (!model.freeBit) n.moves++;
     return { state: n, fallen: [] };
   }
 

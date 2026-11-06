@@ -6,7 +6,7 @@
  *   캐릭터 id(zena 등) : 그 캐릭터의 대사
  *   표시 'hidden' : 숨은 속마음(성향 단서)
  *
- * 만남 1~4 : intro → 선택(trust/attract/push) → 퍼즐 → after → 결과 (만남 4 뒤에 성향 추리)
+ * 만남 1~4 : intro → 선택(trust/attract/push) → 퍼즐 → after → 결과 (만남 2, 4 뒤에 성향 추리)
  * 만남 5   : intro(그녀의 고백) → 선택(accept/slow) → 퍼즐 → 엔딩 판정
  *            사랑 조건을 채우면 약속 장면(세이프워드) → 만남 6이 열림. 아니면 들켜 버린/머뭇거린 엔딩
  * 만남 6   : intro → 퍼즐 → night(둘만의 밤, 애프터케어) → 사랑 엔딩
@@ -27,19 +27,20 @@ window.GAME_STORY = {
     },
     finale: { accept: { trust: 0, attraction: 10 }, slow: { trust: 10, attraction: 0 } },
     starBonus: 5,      // 별 3개로 풀면 끌림 +5 (드라이버를 능숙하게 다루는 모습)
-    deduceBonus: 15,   // 성향 추리를 맞히면 끌림 +15
-    love: { trust: 50, attraction: 60 },
+    deduceBonus: 10,   // 성향 추리 한 단계를 맞힐 때마다 끌림 +10
+    wrongPenalty: 10,  // 성향을 잘못 짚을 때마다 신뢰 -10 (섣부른 짐작은 그녀를 당황하게 합니다)
+    love: { trust: 50, attraction: 60 }, // + 성향 추리 두 단계 모두 정답
     exposed: { attraction: 50 },
   },
   choiceNote: {
-    trust: '신뢰 선택 · 신뢰 +20 · 보관 구멍 +1',
-    attract: { tray: '끌림 선택 · 끌림 +20 · 숨은 속마음 공개 · 보관 구멍 -1', guard: '끌림 선택 · 끌림 +20 · 숨은 속마음 공개 · 경계 나사 +2' },
-    push: { tray: '밀어붙이기 · 신뢰 -15 · 보관 구멍 -1', guard: '밀어붙이기 · 신뢰 -15 · 경계 나사 +2' },
-    accept: '그녀가 원하는 역할로 답한다 · 끌림 +10',
-    slow: '천천히 가자고 한다 · 신뢰 +10',
+    trust: '신뢰 ↑ · 퍼즐이 쉬워져요',
+    attract: '끌림 ↑ · 숨은 속마음 · 퍼즐이 어려워져요',
+    push: '신뢰 ↓ · 퍼즐이 어려워져요',
+    accept: '끌림 ↑',
+    slow: '신뢰 ↑',
   },
   endingTypes: {
-    love: { name: '사랑 엔딩', hint: '신뢰 50 · 끌림 60 이상 · 성향 추리 정답' },
+    love: { name: '사랑 엔딩', hint: '신뢰 50 · 끌림 60 이상 · 성향 추리 두 단계 모두 정답' },
     exposed: { name: '들켜 버린 엔딩', hint: '끌림은 높지만 신뢰가 부족할 때' },
     hesitant: { name: '머뭇거린 엔딩', hint: '그 밖의 경우' },
   },

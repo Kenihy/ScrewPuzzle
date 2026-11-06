@@ -1,7 +1,8 @@
 /*
  * 하트볼트(Heartbolt) — 선택지별 퍼즐 변형 생성기
  *
- * 사용법: node tools/variants.mjs   (levelgen.mjs 실행 뒤에 실행)
+ * 사용법: node tools/variants.mjs                (levelgen.mjs 실행 뒤에 실행)
+ *         ONLY=zena-3 node tools/variants.mjs     (지정한 레벨만 다시 계산)
  *
  * 대화 선택지에 따라 같은 배치의 퍼즐 조건을 바꿉니다. (만남 1~5)
  *  - 만남 1~4: 신뢰 선택 → safe, 끌림·밀어붙이기 선택 → deep
@@ -31,7 +32,9 @@ function check(level) {
   return best ? Math.min(best.moves, r.path.length) : r.path.length;
 }
 
+const ONLY = process.env.ONLY ? process.env.ONLY.split(',') : null; // 지정한 레벨만 다시 계산
 for (const [id, L] of Object.entries(data.levels)) {
+  if (ONLY && !ONLY.includes(id)) continue;
   if (L.stage >= 6) { delete L.variants; continue; } // 만남 6(둘만의 밤)은 선택지 없이 진행
   const base = { tray: L.tray, planks: L.planks, screws: L.screws };
   const safeTray = Math.min(R.MAX_TRAY, L.tray + 1);

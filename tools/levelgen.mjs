@@ -154,10 +154,10 @@ function applyGimmicks(rng, level, cfg) {
     openFirst(level.screws.map((_, i) => i).filter(plain)).slice(0, cfg.brat)
       .forEach((i) => { level.screws[i].brat = true; });
   }
-  // 유리 판(제나): 위쪽 층의 판을 투명하게
+  // 유리 판(제나): 아래 판의 구멍을 실제로 가리는 판을 투명하게 (아무것도 가리지 않으면 기믹이 무의미)
   if (cfg.glass) {
-    const top = normal.filter((z) => z >= Math.floor(n * 0.45));
-    shuffle(rng, top).slice(0, cfg.glass).forEach((z) => { level.planks[z].glass = true; });
+    pickGlass(level, cfg.glass, normal);
+    if (level.planks.filter((p) => p.glass).length < cfg.glass) return false; // 가릴 것이 없는 배치는 버림
   }
   // 리본 판(엘라): 좌우 대칭인 판 두 장을 우선 묶습니다
   if (cfg.ribbon) {
@@ -183,6 +183,24 @@ function applyGimmicks(rng, level, cfg) {
     if (!heads.includes('follow') && ids.length) level.screws[ids[0]].head = 'follow';
     if (!heads.includes('lead') && ids.length > 1) level.screws[ids[1]].head = 'lead';
   }
+}
+
+// 유리 판 고르기: 자기 구멍 없이 아래 판의 구멍을 가리는 칸이 많은 판일수록 우선
+export function glassScore(planks, z) {
+  const cells = R.coveredPoints(planks[z]);
+  let score = 0;
+  for (let w = 0; w < z; w++) {
+    for (const h of planks[w].holes) {
+      if (hasPt(cells, h) && !hasPt(planks[z].holes, h)) score++;
+    }
+  }
+  return score;
+}
+function pickGlass(level, count, normal) {
+  level.planks.forEach((p) => { delete p.glass; });
+  normal.map((z) => ({ z, s: glassScore(level.planks, z) })).filter((c) => c.s > 0)
+    .sort((a, b) => b.s - a.s || b.z - a.z).slice(0, count)
+    .forEach(({ z }) => { level.planks[z].glass = true; });
 }
 
 function coverage(planks) {
@@ -331,7 +349,7 @@ for (const ch of CHAPTERS) {
       if (!planks) continue;
       const level = { tray: cfg.tray, planks, screws: placeScrews(rng, planks, cfg) };
       if (level.screws.length > 22) continue;
-      applyGimmicks(rng, level, cfg);
+      if (applyGimmicks(rng, level, cfg) === false) continue;
       const ev = evaluate(level, rng);
       if (!ev) continue;
       const coverPenalty = Math.max(0, cfg.minCover - ev.cover) * 3;

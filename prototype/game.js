@@ -37,12 +37,14 @@
 
   /* ---------------- 저장 ---------------- */
   const S = window.GAME_STORY;
-  const SAVE_KEY = 'heartbolt-save-v3';
+  const SAVE_KEY = 'heartbolt-save-v4';
   const defaultSave = () => ({
     stars: {},      // 만남별 최고 별 수
     meet: {},       // 만남 결과. 1~4: { choice: trust|attract|push, stars }, 5: { choice: accept|slow, stars }, 6: { stars }
     hidden: {},     // 끌림 선택으로 연 숨은 속마음
-    deduce: {},     // 캐릭터별 성향 추리 { picks: [], correct }
+    facts: {},      // 캐릭터별 알아낸 것 (facts 번호 목록)
+    deduce: {},     // 캐릭터별 성향 추리 [1단계, 2단계] = { pick, correct, wrongs, lockedAt }
+    clears: {},     // 캐릭터별 만남을 마친 횟수 (오답 뒤 다시 추리할 수 있는 시점 계산용)
     night: {},      // 캐릭터별 '둘만의 밤' 해금 여부
     endings: {},    // 캐릭터별 본 엔딩 { love, exposed, hesitant }
     tools: { hammer: 3, hole: 3, hint: 3 },
@@ -75,10 +77,35 @@
   const endingCount = (ch) => Object.keys(save.endings[ch.id] || {}).length;
   const meetDone = (ch, n) => !!save.meet[levelId(ch.id, n)];
   const clearedCount = (ch) => [1, 2, 3, 4, 5, 6].filter((n) => meetDone(ch, n)).length;
-  const deduction = (ch) => save.deduce[ch.id] || null;
-  // 추리 결과는 만남 5에서 그녀가 고백한 뒤에야 공개됩니다
-  const deductionRevealed = (ch) => !!deduction(ch) && meetDone(ch, 5);
   const clamp = (v) => Math.max(0, Math.min(100, v));
+
+  // 알아낸 것: 만남 n의 a(판 절반) = 2(n-1), b(클리어) = 2(n-1)+1
+  const factsOf = (ch) => save.facts[ch.id] || [];
+  const knows = (ch, idx) => save.unlockAll || factsOf(ch).includes(idx);
+  const knowsName = (ch) => knows(ch, 1);
+  const displayName = (ch) => (knowsName(ch) ? ch.name : ch.alias);
+  function learnFact(ch, idx) {
+    if (factsOf(ch).includes(idx) || !ch.facts[idx]) return false;
+    save.facts[ch.id] = factsOf(ch).concat(idx);
+    persist();
+    return true;
+  }
+
+  // 성향 추리 2단계
+  const dedSteps = (ch) => save.deduce[ch.id] || [];
+  const dedStep = (ch, i) => dedSteps(ch)[i] || null;
+  const dedCorrect = (ch, i) => !!(dedStep(ch, i) && dedStep(ch, i).correct);
+  const allCorrect = (ch) => dedCorrect(ch, 0) && dedCorrect(ch, 1);
+  const wrongCount = (ch) => dedSteps(ch).reduce((n, d) => n + ((d && d.wrongs) || 0), 0);
+  // 단계 i를 지금 추리할 수 있는가: 해당 만남을 마쳤고, 아직 정답 전이며, 오답 직후라면 만남을 하나 더 마친 뒤
+  function canDeduce(ch, i) {
+    const d = ch.deductions[i];
+    if (!meetDone(ch, d.after) || dedCorrect(ch, i)) return false;
+    const st = dedStep(ch, i);
+    return !st || (save.clears[ch.id] || 0) > st.lockedAt;
+  }
+  // 정답을 맞힌 단계의 역할 능력
+  const abilitiesOf = (ch) => ch.deductions.filter((_, i) => dedCorrect(ch, i)).map((d) => d.ability);
 
   // 신뢰 = 그녀가 허락한 깊이, 끌림 = 그녀의 성향에 맞게 반응한 정도
   function gauges(ch) {
@@ -90,13 +117,13 @@
       if (fx) { trust += fx.trust; attraction += fx.attraction; }
       if (m.stars === 3) attraction += S.rules.starBonus;
     }
-    const d = deduction(ch);
-    if (d && d.correct && deductionRevealed(ch)) attraction += S.rules.deduceBonus;
+    attraction += S.rules.deduceBonus * ch.deductions.filter((_, i) => dedCorrect(ch, i)).length;
+    trust -= S.rules.wrongPenalty * wrongCount(ch);
     return { trust: clamp(trust), attraction: clamp(attraction) };
   }
   function loveReady(ch) {
-    const g = gauges(ch), d = deduction(ch);
-    return g.trust >= S.rules.love.trust && g.attraction >= S.rules.love.attraction && !!(d && d.correct);
+    const g = gauges(ch);
+    return g.trust >= S.rules.love.trust && g.attraction >= S.rules.love.attraction && allCorrect(ch);
   }
   function chapterUnlocked(ch) {
     if (save.unlockAll || !ch.unlockAfter) return true;
@@ -107,10 +134,10 @@
     if (!chapterUnlocked(ch)) return false;
     if (save.unlockAll || n === 1) return true;
     if (n <= 4) return meetDone(ch, n - 1);
-    if (n === 5) return meetDone(ch, 4) && !!deduction(ch);
+    if (n === 5) return meetDone(ch, 4) && !!dedStep(ch, 1);
     return !!save.night[ch.id];
   }
-  const unlockText = (ch) => `${charById(ch.unlockAfter).name}와의 첫 만남을 마치면 열려요`;
+  const unlockText = (ch) => `${displayName(charById(ch.unlockAfter))}와의 첫 만남을 마치면 열려요`;
 
   /* ---------------- 이미지 ---------------- */
   const images = {};
@@ -209,7 +236,7 @@
     showHome();
   }
 
-  /* ---------------- 홈 ---------------- */
+  /* ---------------- 홈: 처음에는 최소한의 정보만 ---------------- */
   function showHome() {
     const el = $('#screen-home');
     el.innerHTML = `
@@ -223,7 +250,7 @@
       </header>
       <p class="section-label">하트볼트가 보이는 사람</p>
       <div class="char-list">${C.characters.map(charCard).join('')}</div>
-      <p class="foot">연애 시뮬레이션 프로토타입 v0.3 · 3명 · 만남 18회 · 엔딩 9종 · 국내판 수위<br>진행 상황은 이 기기의 브라우저에만 저장됩니다</p>`;
+      <p class="foot">프로토타입 v0.4 · 국내판 수위 · 진행 상황은 이 기기의 브라우저에만 저장됩니다</p>`;
     showScreen('home');
   }
   function gaugeHtml(g, compact) {
@@ -232,59 +259,67 @@
       <span class="gauge attraction"><span class="gauge-label">${ICON.heart}끌림</span><span class="gauge-bar"><i style="width:${g.attraction}%"></i></span><b>${g.attraction}</b></span>
     </span>`;
   }
-  function prefTags(ch) {
-    if (!deductionRevealed(ch) && !save.unlockAll) return '<span class="pref-tags"><span class="unknown">성향 ???</span></span>';
-    const p = ch.preference;
-    return `<span class="pref-tags"><span>${p.main}</span><span>${p.sub}</span></span>`;
-  }
   function charCard(ch) {
     const open = chapterUnlocked(ch);
     const pips = [1, 2, 3, 4, 5, 6].map((n) => `<span class="pip ${meetDone(ch, n) ? 'on' : ''}"></span>`).join('');
+    const known = factsOf(ch).length;
     return `
       <button class="char-card ${open ? '' : 'locked'}" data-${open ? 'go' : 'locked'}="${ch.id}" style="--accent:${ch.accent}">
         <span class="portrait" style="${bgCss(ch, ch.portrait)}"></span>
         ${open ? '' : `<span class="char-lock">${ICON.lock}</span>`}
         <span class="char-info">
-          <span class="char-name">${open ? ch.name : '???'}<small>${open ? ch.nameEn : 'LOCKED'}</small></span>
-          <span class="char-role">${open ? `${ch.age} · ${esc(ch.role)}` : '아직 하트볼트가 보이지 않는 사람'}</span>
-          ${open ? prefTags(ch) + gaugeHtml(gauges(ch), true) : `<span class="char-outer">${esc(unlockText(ch))}</span>`}
-          <span class="char-progress"><span class="pips">${pips}</span><span>엔딩 ${endingCount(ch)}/3</span></span>
+          <span class="char-name">${open ? esc(displayName(ch)) : '???'}${open && knowsName(ch) ? `<small>${ch.nameEn}</small>` : ''}</span>
+          <span class="char-role">${open ? (known ? `알아낸 것 ${known}/12` : '아직 아무것도 모르는 사람') : esc(unlockText(ch))}</span>
+          <span class="char-progress"><span class="pips">${pips}</span><span>${open ? `만남 ${clearedCount(ch)}/6` : ''}</span></span>
         </span>
       </button>`;
   }
 
-  /* ---------------- 공략 노트 (캐릭터별 루트) ---------------- */
+  /* ---------------- 공략 노트: 알게 된 만큼만 보여 줍니다 ---------------- */
+  function nextAction(ch) {
+    for (let i = 0; i < 2; i++) {
+      if (canDeduce(ch, i) && !dedStep(ch, i)) return { act: 'deduce', step: i, label: `성향 추리 ${i + 1}단계` };
+    }
+    for (let n = 1; n <= MEETINGS; n++) {
+      if (!meetDone(ch, n) && stageUnlocked(ch, n)) {
+        const mt = routeOf(ch).meetings[n - 1];
+        return { go: levelId(ch.id, n), label: n === 5 ? '하트볼트' : n === 6 ? '둘만의 밤' : `만남 ${n} · ${mt.place}` };
+      }
+    }
+    if (meetDone(ch, 4) && !dedStep(ch, 1) && canDeduce(ch, 1)) return { act: 'deduce', step: 1, label: '성향 추리 2단계' };
+    return null;
+  }
   function showChapter(ch) {
     const el = $('#screen-chapter');
-    const [ga, gb] = ch.gimmicks.map((k) => C.gimmicks[k]);
-    const revealed = deductionRevealed(ch) || save.unlockAll;
+    const next = nextAction(ch);
+    const facts = factsOf(ch).slice().sort((a, b) => a - b);
+    const roles = ch.deductions.filter((_, i) => dedCorrect(ch, i));
     el.style.setProperty('--accent', ch.accent);
     el.innerHTML = `
       <div class="topbar">
         <button class="icon-btn" data-go="" aria-label="그녀 목록으로">${ICON.back}</button>
-        <span class="topbar-title">${ch.name} 공략 노트</span>
+        <span class="topbar-title">${esc(displayName(ch))}</span>
         <span class="topbar-spacer"></span>
       </div>
       <section class="chapter-hero">
         <div class="hero-portrait" style="${bgCss(ch, ch.portrait)}"></div>
         <div class="hero-info">
-          <p class="eyebrow">${ch.nameEn} · ${ch.age} · ${esc(ch.role)}</p>
-          <h2 class="hero-name">${ch.name}</h2>
-          <p class="hero-outer">겉으로 보이는 모습<strong>${esc(ch.outer)}</strong></p>
-          <span class="gimmick-row"><span class="gimmick-chip" title="${esc(ga.desc)}">${ga.name}</span><span class="gimmick-chip" title="${esc(gb.desc)}">${gb.name}</span></span>
+          <p class="eyebrow">${knowsName(ch) ? ch.nameEn : '???'}</p>
+          <h2 class="hero-name">${esc(displayName(ch))}</h2>
+          <p class="hero-outer">${knows(ch, 0) ? esc(ch.facts[0][1]) : '아직 아무것도 모르는 사람'}</p>
+          ${roles.length ? `<span class="gimmick-row">${roles.map((d) => `<span class="role-chip">${esc(d.role)}</span>`).join('')}</span>` : ''}
         </div>
       </section>
-      ${gaugeHtml(gauges(ch))}
-      <p class="gauge-note">신뢰는 그녀의 선을 존중할 때, 끌림은 그녀의 성향에 맞게 반응할 때 오릅니다. 사랑 엔딩은 신뢰 ${S.rules.love.trust}, 끌림 ${S.rules.love.attraction} 이상에 성향 추리까지 맞혀야 열립니다.</p>
-      <p class="section-label">성향 노트</p>
-      ${prefNote(ch, revealed)}
+      ${next ? `<button class="btn primary wide next-cta" ${next.go ? `data-go="${next.go}"` : `data-act="deduce" data-ch="${ch.id}" data-step="${next.step}"`}>${next.act ? ICON.spark : ''}${esc(next.label)}</button>` : ''}
+      ${meetDone(ch, 1) ? gaugeHtml(gauges(ch)) : ''}
+      ${facts.length ? `<p class="section-label">알아낸 것 ${facts.length}/12</p>
+        <dl class="fact-list">${facts.map((i) => `<div><dt>${esc(ch.facts[i][0])}</dt><dd>${esc(ch.facts[i][1])}</dd></div>`).join('')}</dl>` : '<p class="note-result">판을 떨어뜨릴 때마다 그녀에 대해 조금씩 알게 돼요.</p>'}
+      ${meetDone(ch, 2) || save.unlockAll ? `<p class="section-label">성향 노트</p>${prefNote(ch)}` : ''}
       <p class="section-label">만남</p>
-      <ol class="stage-list">${ch.stages.map((s, i) => stageRow(ch, s, i + 1)).join('')}</ol>
-      <p class="section-label">엔딩</p>
-      <div class="ending-list">${endingRows(ch)}</div>
-      <p class="section-label">마음 조각</p>
-      <div class="card-list">${ch.stages.map((s, i) => fragmentHtml(ch, i + 1, fragmentOpen(ch, i + 1))).join('')}${bonusHtml(ch)}</div>
-      ${endingCount(ch) ? `<button class="btn primary wide" data-act="viewer" data-ch="${ch.id}">${ICON.image} 전체 일러스트 보기</button>` : ''}`;
+      <ol class="stage-list">${ch.stages.map((s, i) => stageRow(ch, s, i + 1)).filter(Boolean).join('')}</ol>
+      ${albumHtml(ch)}
+      ${fragmentsHtml(ch)}
+      ${meetDone(ch, 5) || endingCount(ch) || save.unlockAll ? `<p class="section-label">엔딩 ${endingCount(ch)}/3</p><div class="ending-list">${endingRows(ch)}</div>` : ''}`;
     el.scrollTop = 0;
     showScreen('chapter');
   }
@@ -299,50 +334,41 @@
     }
     return out;
   }
-  function prefNote(ch, revealed) {
-    const clues = collectedClues(ch);
-    const d = deduction(ch);
-    const p = ch.preference;
-    let status;
-    if (revealed) {
-      status = `<p class="note-reveal"><strong>${p.main} · ${p.sub}</strong><span>${esc(p.note)}</span></p>
-        <p class="note-role">당신의 역할 · <b>${esc(p.playerRole)}</b></p>
-        ${d && !save.unlockAll ? `<p class="note-result ${d.correct ? 'ok' : 'miss'}">${d.correct ? '추리 적중' : '추리 빗나감'} · 내 추리: ${d.picks.join(', ')}</p>` : ''}`;
-    } else if (d) {
-      status = `<p class="note-result">내 추리: <b>${d.picks.join(', ')}</b> · 만남 5에서 그녀의 고백으로 확인됩니다.</p>
-        ${!meetDone(ch, 5) ? `<button class="btn" data-act="deduce" data-ch="${ch.id}">추리 다시 하기</button>` : ''}`;
-    } else if (meetDone(ch, 4)) {
-      status = `<button class="btn primary wide" data-act="deduce" data-ch="${ch.id}">${ICON.spark} 성향 추리하기</button>`;
-    } else {
-      status = '<p class="note-result">만남 4를 마치면 단서를 바탕으로 그녀의 성향을 추리할 수 있어요.</p>';
+  function stepStatusHtml(ch, i) {
+    const d = ch.deductions[i];
+    const st = dedStep(ch, i);
+    if (dedCorrect(ch, i)) {
+      const ab = C.abilities[d.ability];
+      return `<div class="step ok"><span class="step-no">${i + 1}단계</span><strong>${esc(d.answer)}</strong>
+        <span class="step-role">당신의 역할 · ${esc(d.role)} — ${esc(ab.name)}: ${esc(ab.desc)}</span></div>`;
     }
+    if (!meetDone(ch, d.after) && !save.unlockAll) return `<div class="step"><span class="step-no">${i + 1}단계</span><span class="step-role">만남 ${d.after}을 마치면 추리할 수 있어요.</span></div>`;
+    if (st && !canDeduce(ch, i)) return `<div class="step miss"><span class="step-no">${i + 1}단계</span><strong>빗나감 · ${esc(st.pick)}</strong><span class="step-role">만남을 하나 더 마치면 다시 추리할 수 있어요.</span></div>`;
+    return `<div class="step"><span class="step-no">${i + 1}단계</span><button class="btn" data-act="deduce" data-ch="${ch.id}" data-step="${i}">${ICON.spark} ${st ? '다시 추리하기' : '추리하기'}</button></div>`;
+  }
+  function prefNote(ch) {
+    const clues = collectedClues(ch);
     return `<section class="pref-note">
-      <p class="note-role">당신의 역할 · <b>${revealed ? esc(p.playerRole) : '???'}</b></p>
-      ${clues.length ? `<ul class="clue-list">${clues.map((c) => `<li class="${c.hidden ? 'hidden-clue' : ''}"><span>만남 ${c.n}</span>${esc(c.text)}</li>`).join('')}</ul>` : '<p class="note-result">아직 모은 단서가 없어요.</p>'}
-      ${status}
+      ${stepStatusHtml(ch, 0)}
+      ${stepStatusHtml(ch, 1)}
+      ${clues.length ? `<details class="clue-box"><summary>모은 단서 ${clues.length}개</summary><ul class="clue-list">${clues.map((c) => `<li class="${c.hidden ? 'hidden-clue' : ''}"><span>만남 ${c.n}</span>${esc(c.text)}</li>`).join('')}</ul></details>` : ''}
     </section>`;
   }
   const fragmentOpen = (ch, n) => (n <= 5 ? meetDone(ch, n) : !!(save.endings[ch.id] || {}).love);
   function stageRow(ch, s, n) {
     const id = levelId(ch.id, n);
     const open = stageUnlocked(ch, n);
-    const m = save.meet[id];
     const done = meetDone(ch, n);
+    // 아직 열리지 않은 미래의 만남은 목록에 보이지 않습니다
+    if (!done && !open) return '';
+    const m = save.meet[id];
     const choiceName = { trust: '신뢰 선택', attract: '끌림 선택', push: '밀어붙이기', accept: '받아들임', slow: '천천히' };
-    let sub;
-    if (!LV[id]) sub = '레벨 준비 중';
-    else if (!open) {
-      if (n === 5 && meetDone(ch, 4)) sub = '성향 추리를 마치면 열려요';
-      else if (n === 6 && meetDone(ch, 5)) sub = '사랑 엔딩 조건을 채워야 열려요';
-      else sub = '앞의 만남을 마치면 열려요';
-    } else if (m && m.choice) sub = `${choiceName[m.choice]} · 다시 만나면 선택을 바꿀 수 있어요`;
-    else if (m) sub = '다시 볼 수 있어요';
-    else sub = routeOf(ch).meetings[n - 1].place;
+    const sub = m && m.choice ? `${choiceName[m.choice]} · 다시 만나면 바꿀 수 있어요` : m ? '다시 볼 수 있어요' : routeOf(ch).meetings[n - 1].place;
     const title = n === 5 ? '하트볼트' : n === 6 ? '둘만의 밤' : s.title;
-    return `<li><button class="stage-row ${done ? 'cleared' : ''}" ${open ? `data-go="${id}"` : 'disabled'}>
+    return `<li><button class="stage-row ${done ? 'cleared' : ''}" data-go="${id}">
       <span class="stage-num">${n}</span>
-      <span class="stage-title">${open ? esc(title) : '잠긴 만남'}<small>${esc(sub)}</small></span>
-      ${open ? `<span class="stage-stars">${starsHtml(starsOf(id))}</span>` : ICON.lock}
+      <span class="stage-title">${esc(title)}<small>${esc(sub)}</small></span>
+      <span class="stage-stars">${starsHtml(starsOf(id))}</span>
     </button></li>`;
   }
   function endingRows(ch) {
@@ -355,20 +381,11 @@
         : `<div class="ending-row"><span class="ending-type">${t.name}</span><strong>???</strong><small>${esc(t.hint)}</small></div>`;
     }).join('');
   }
-  function fragmentHtml(ch, n, open) {
+  function fragmentHtml(ch, n) {
     const s = ch.stages[n - 1];
     const id = levelId(ch.id, n);
     const hiddenLine = n <= 4 ? routeOf(ch).meetings[n - 1].hidden : null;
-    if (!open) {
-      const how = n <= 5 ? `만남 ${n}을 마치면 열려요.` : '사랑 엔딩에서 열려요.';
-      return `<article class="fragment locked"><p class="fragment-type">마음 조각 ${n} · ${C.cardTypes[n - 1]}</p><h3>???</h3><p class="fragment-body">${how}</p></article>`;
-    }
-    let hiddenHtml = '';
-    if (hiddenLine) {
-      hiddenHtml = save.hidden[id]
-        ? `<p class="fragment-hidden"><span>숨은 속마음</span>‘${esc(hiddenLine)}’</p>`
-        : '<p class="fragment-hidden locked"><span>숨은 속마음</span>끌림 선택으로 퍼즐을 풀면 열려요.</p>';
-    }
+    const hiddenHtml = hiddenLine && save.hidden[id] ? `<p class="fragment-hidden"><span>숨은 속마음</span>‘${esc(hiddenLine)}’</p>` : '';
     return `<article class="fragment${n === 5 ? ' heart-card' : ''}">
       <p class="fragment-type">마음 조각 ${n} · ${C.cardTypes[n - 1]}</p>
       <h3>${esc(n === 5 ? ch.preference.main + ' · ' + ch.preference.sub : s.title)}</h3>
@@ -377,58 +394,94 @@
       ${hiddenHtml}
     </article>`;
   }
-  function bonusHtml(ch) {
-    const stars = totalStars(ch);
+  // 모은 마음 조각만 보여 줍니다. 비밀 메모는 조건을 채웠을 때만 나타납니다
+  function fragmentsHtml(ch) {
+    const open = ch.stages.map((_, i) => i + 1).filter((n) => fragmentOpen(ch, n));
     const need = MEETINGS * 3;
-    if (stars < need) {
-      return `<article class="fragment locked"><p class="fragment-type">비밀 메모 · 별 ${need}개</p><h3>???</h3><p class="fragment-body">모든 만남에서 별 3개를 받으면 열려요. (지금 ★ ${stars}/${need})</p></article>`;
-    }
-    return `<article class="fragment bonus"><p class="fragment-type">비밀 메모 · 별 ${need}개 달성</p><h3>${esc(ch.bonus.title)}</h3><p class="fragment-body">${esc(ch.bonus.body)}</p></article>`;
+    const bonus = totalStars(ch) >= need
+      ? `<article class="fragment bonus"><p class="fragment-type">비밀 메모 · 별 ${need}개 달성</p><h3>${esc(ch.bonus.title)}</h3><p class="fragment-body">${esc(ch.bonus.body)}</p></article>` : '';
+    if (!open.length && !bonus) return '';
+    return `<p class="section-label">마음 조각 ${open.length}/6</p><div class="card-list">${open.map((n) => fragmentHtml(ch, n)).join('')}${bonus}</div>`;
   }
 
-  /* ---------------- 성향 추리 ---------------- */
-  let deducePicks = [];
-  function openDeduction(ch) {
-    const d = deduction(ch);
-    deducePicks = d ? d.picks.slice() : [];
+  /* ---------------- 앨범: 역할이 깨어나면 관련 이미지가 열립니다 ---------------- */
+  function albumItems(ch) {
+    const items = ch.deductions.map((d, i) => ({ key: 'd' + i, open: dedCorrect(ch, i) || save.unlockAll, ...d.image }));
+    items.push({ key: 'love', open: !!(save.endings[ch.id] || {}).love || save.unlockAll, title: '하트볼트 너머의 그녀', caption: routeOf(ch).endings.love.title, crop: { cx: 0.5, cy: 0.5, zoom: 1 }, effect: 'none' });
+    return items;
+  }
+  function albumHtml(ch) {
+    const items = albumItems(ch);
+    const open = items.filter((x) => x.open);
+    if (!open.length) return '';
+    return `<p class="section-label">앨범 ${open.length}/${items.length}</p>
+      <div class="album">${items.map((x) => x.open
+        ? `<button class="album-item" data-act="album" data-ch="${ch.id}" data-key="${x.key}"><span class="album-art fx-${x.effect}" style="${bgCss(ch, x.crop)}"></span><span>${esc(x.title)}</span></button>`
+        : `<span class="album-item locked"><span class="album-art"></span><span>???</span></span>`).join('')}</div>`;
+  }
+  function openViewer(ch, key) {
+    const item = albumItems(ch).find((x) => x.key === (key || 'love')) || albumItems(ch)[2];
+    const v = $('#viewer');
+    v.innerHTML = `
+      <div class="viewer-art fx-${item.effect}" style="${bgCss(ch, item.crop)}" role="img" aria-label="${esc(item.title)}"></div>
+      <p class="viewer-cap"><strong>${esc(item.title)}</strong>${esc(item.caption)}</p>
+      <button class="btn" data-act="close-viewer">${ICON.close} 닫기</button>`;
+    v.hidden = false;
+  }
+
+  /* ---------------- 성향 추리 (2단계, 맞히면 역할이 깨어남) ---------------- */
+  let deducePick = null;
+  function openDeduction(ch, i) {
+    const d = ch.deductions[i];
+    deducePick = null;
     const clues = collectedClues(ch);
     const render = () => {
       openSheet(`
-        <p class="eyebrow center">성향 추리 · ${ch.name}</p>
-        <h2>그녀의 하트볼트에는 무엇이 잠겨 있을까</h2>
-        <p class="muted">모은 단서를 보고 그녀의 성향 두 가지를 고르세요. 정답은 만남 5에서 그녀가 직접 털어놓을 때 확인됩니다. 맞히면 끌림이 오르고 하트볼트 퍼즐이 쉬워집니다.</p>
-        <ul class="clue-list">${clues.map((c) => `<li class="${c.hidden ? 'hidden-clue' : ''}"><span>만남 ${c.n}</span>${esc(c.text)}</li>`).join('')}</ul>
-        <div class="pref-chips">${ch.deduction.options.map((o) => `
-          <button class="pref-chip ${deducePicks.includes(o) ? 'on' : ''}" data-pick="${esc(o)}" aria-pressed="${deducePicks.includes(o)}">
+        <p class="eyebrow center">성향 추리 ${i + 1}/2 · ${esc(displayName(ch))}</p>
+        <h2>${i === 0 ? '그녀는 어떤 사람일까' : '하트볼트에 잠긴 또 하나의 성향'}</h2>
+        <p class="muted">단서를 보고 하나를 고르세요. 맞히면 당신의 역할이 깨어나 퍼즐을 다루는 능력이 생깁니다. 틀리면 그녀가 당황해 신뢰가 ${S.rules.wrongPenalty} 떨어져요.</p>
+        <details class="clue-box" open><summary>모은 단서 ${clues.length}개</summary><ul class="clue-list">${clues.map((c) => `<li class="${c.hidden ? 'hidden-clue' : ''}"><span>만남 ${c.n}</span>${esc(c.text)}</li>`).join('')}</ul></details>
+        <div class="pref-chips">${d.options.map((o) => `
+          <button class="pref-chip ${deducePick === o ? 'on' : ''}" data-pick="${esc(o)}" aria-pressed="${deducePick === o}">
             <strong>${esc(o)}</strong><small>${esc(C.preferenceGlossary[o] || '')}</small>
           </button>`).join('')}</div>
         <div class="actions">
           <button class="btn" data-act="close-sheet">나중에</button>
-          <button class="btn primary" data-act="deduce-confirm" data-ch="${ch.id}" ${deducePicks.length === 2 ? '' : 'disabled'}>${deducePicks.length === 2 ? '이 성향으로 기록하기' : `두 가지를 고르세요 (${deducePicks.length}/2)`}</button>
+          <button class="btn primary" data-act="deduce-confirm" data-ch="${ch.id}" data-step="${i}" ${deducePick ? '' : 'disabled'}>${deducePick ? '이 성향이 맞다' : '하나를 고르세요'}</button>
         </div>`);
     };
     openDeduction.render = render;
     render();
   }
-  function confirmDeduction(ch) {
-    if (deducePicks.length !== 2) return;
-    const ans = ch.deduction.answer;
-    const correct = deducePicks.every((p) => ans.includes(p));
-    save.deduce[ch.id] = { picks: deducePicks.slice(), correct };
+  function confirmDeduction(ch, i) {
+    if (!deducePick) return;
+    const d = ch.deductions[i];
+    const prev = dedStep(ch, i) || { wrongs: 0 };
+    const correct = deducePick === d.answer;
+    const steps = dedSteps(ch).slice();
+    steps[i] = { pick: deducePick, correct, wrongs: prev.wrongs + (correct ? 0 : 1), lockedAt: save.clears[ch.id] || 0 };
+    save.deduce[ch.id] = steps;
     persist();
-    closeSheet();
-    toast('성향 노트에 추리를 기록했어요. 만남 5가 열렸습니다.');
-    go(ch.id);
-  }
-
-  /* ---------------- 일러스트 감상 ---------------- */
-  function openViewer(ch) {
-    const v = $('#viewer');
-    v.innerHTML = `
-      <img src="${ch.image}" alt="${ch.name}의 전체 일러스트">
-      <p class="viewer-cap"><strong>${ch.name}</strong>하트볼트 너머의 그녀</p>
-      <button class="btn" data-act="close-viewer">${ICON.close} 닫기</button>`;
-    v.hidden = false;
+    if (correct) {
+      const ab = C.abilities[d.ability];
+      sfx('unlock');
+      openSheet(`
+        <p class="ending-badge ending-love">역할 각성</p>
+        <h2 class="ending-title">${esc(d.role)}</h2>
+        <p class="muted center">그녀의 성향 · <b>${esc(d.answer)}</b></p>
+        <div class="ability-card"><strong>${esc(ab.name)}</strong><span>${esc(ab.desc)}</span></div>
+        <button class="album-reveal" data-act="album" data-ch="${ch.id}" data-key="d${i}">
+          <span class="album-art fx-${d.image.effect}" style="${bgCss(ch, d.image.crop)}"></span>
+          <span><b>앨범에 새 이미지</b>${esc(d.image.title)}</span>
+        </button>
+        <div class="actions"><button class="btn primary" data-go="${ch.id}">계속</button></div>`);
+    } else {
+      sfx('deny');
+      openSheet(`
+        <h2>그녀가 당황했어요</h2>
+        <p class="muted">‘${esc(deducePick)}’… 그녀의 표정이 굳었습니다. 섣부른 짐작에 신뢰가 ${S.rules.wrongPenalty} 떨어졌어요. 만남을 하나 더 마치고 단서를 모은 뒤 다시 추리할 수 있어요.</p>
+        <div class="actions"><button class="btn primary" data-go="${ch.id}">확인</button></div>`);
+    }
   }
 
   /* ---------------- 설정 ---------------- */
@@ -438,10 +491,10 @@
     openSheet(`
       <h2>설정</h2>
       <div class="setting-row"><span>효과음</span><button class="switch" role="switch" aria-checked="${save.sound}" data-act="toggle-sound" aria-label="효과음"></button></div>
-      <div class="setting-row"><span>모든 만남 열기<small>프로토타입 검토용. 잠금 조건, 추리 조건, 사랑 엔딩 조건을 무시합니다.</small></span><button class="switch" role="switch" aria-checked="${save.unlockAll}" data-act="toggle-unlock" aria-label="모든 만남 열기"></button></div>
+      <div class="setting-row"><span>모든 만남 열기<small>프로토타입 검토용. 잠금 조건과 사랑 엔딩 조건을 무시하고, 정보도 모두 보여 줍니다.</small></span><button class="switch" role="switch" aria-checked="${save.unlockAll}" data-act="toggle-unlock" aria-label="모든 만남 열기"></button></div>
       <div class="setting-row"><span>판 구성<small>지금은 국내판(하트볼트) 수위입니다. 성인판(Heartbolt: After Dark)은 만남 6의 장면과 일러스트만 바뀝니다.</small></span></div>
       <div class="setting-row"><span>프롤로그 다시 보기</span><button class="btn" data-act="prologue">보기</button></div>
-      <div class="setting-row"><span>진행 초기화<small>신뢰, 끌림, 추리, 엔딩, 별, 도구 개수를 처음 상태로 되돌립니다.</small></span><button class="btn" data-act="reset" id="btn-reset">초기화</button></div>
+      <div class="setting-row"><span>진행 초기화<small>신뢰, 끌림, 추리, 알아낸 것, 엔딩, 별, 도구 개수를 처음 상태로 되돌립니다.</small></span><button class="btn" data-act="reset" id="btn-reset">초기화</button></div>
       <div class="actions"><button class="btn primary" data-act="close-sheet">닫기</button></div>`);
   }
 
@@ -454,7 +507,8 @@
     if (who === 'narr') return null;
     if (who === 'me') return { name: '나', color: 'var(--brass)' };
     const c = charById(who);
-    return { name: tag === 'hidden' ? `${c.name}의 속마음` : c.name, color: tag === 'hidden' ? 'var(--heart)' : c.accent };
+    const nm = displayName(c);
+    return { name: tag === 'hidden' ? `${nm}의 속마음` : nm, color: tag === 'hidden' ? 'var(--heart)' : c.accent };
   }
   function showSceneFrame(ch, place) {
     const bg = $('#scene-bg');
@@ -546,12 +600,11 @@
     if (tk !== flowSeq) return;
     let variant = null;
     if (n <= 4) {
-      const fx = LV[levelId(ch.id, n)].variants.deep.effect;
       const opts = [
         { key: 'trust', label: mt.choices.trust.label, note: S.choiceNote.trust },
-        { key: 'attract', label: mt.choices.attract.label, note: S.choiceNote.attract[fx] },
+        { key: 'attract', label: mt.choices.attract.label, note: S.choiceNote.attract },
       ];
-      if (mt.choices.push) opts.push({ key: 'push', label: mt.choices.push.label, note: S.choiceNote.push[fx] });
+      if (mt.choices.push) opts.push({ key: 'push', label: mt.choices.push.label, note: S.choiceNote.push });
       const key = await askChoice(opts);
       if (tk !== flowSeq) return;
       current.choice = key;
@@ -564,11 +617,10 @@
       ]);
       if (tk !== flowSeq) return;
       current.choice = key;
-      const d = deduction(ch);
-      variant = d && d.correct ? 'safe' : 'deep';
-      const verdict = d && d.correct
-        ? ['narr', `추리가 맞았다. 그녀의 하트볼트에 잠긴 것은 ${ch.preference.main}, 그리고 ${ch.preference.sub}.`]
-        : ['narr', '추리가 빗나갔다. 그녀의 하트볼트가 낯선 모양으로 단단히 조여 온다.'];
+      variant = allCorrect(ch) ? 'safe' : 'deep';
+      const verdict = allCorrect(ch)
+        ? ['narr', `그녀가 털어놓은 성향은 내가 알아본 그대로였다. ${ch.preference.main}, 그리고 ${ch.preference.sub}.`]
+        : ['narr', '그녀가 털어놓은 성향은 내 짐작과 달랐다. 하트볼트가 낯선 모양으로 단단히 조여 온다.'];
       await playLines([...mt.choices[key].reply, verdict, S.heartWall]);
     }
     if (tk !== flowSeq) return;
@@ -587,6 +639,11 @@
     const summary = { ch, n, stars, moves: P.st.moves, par: P.level.par, usedTools: P.usedTools, before: gauges(ch) };
     const first = !meetDone(ch, n);
     save.stars[id] = Math.max(starsOf(id), stars);
+    save.clears[ch.id] = (save.clears[ch.id] || 0) + 1;
+    // 퍼즐을 다 풀면 이 만남의 두 번째 정보가 열립니다 (첫 번째는 판이 절반 떨어질 때 열림)
+    const fb = 2 * (n - 1) + 1;
+    if (learnFact(ch, fb)) P.newFacts.push(fb);
+    summary.facts = P.newFacts.slice();
     if (first) {
       const tool = ['hammer', 'hole', 'hint'][(n - 1) % 3];
       save.tools[tool]++;
@@ -595,14 +652,12 @@
     summary.first = first;
 
     if (n <= 4) {
-      if (n === 4 && save.deduce[ch.id] && !meetDone(ch, 5)) delete save.deduce[ch.id]; // 만남 4를 다시 하면 추리도 다시
       summary.newHidden = current.choice === 'attract' && !save.hidden[id];
       save.meet[id] = { choice: current.choice, stars };
       if (current.choice === 'attract') save.hidden[id] = true;
       persist();
       summary.after = gauges(ch);
-      summary.choice = current.choice;
-      summary.clue = mt.clue;
+      summary.clue = first ? mt.clue : null;
       showSceneFrame(ch, `만남 ${n} · ${mt.place}`);
       const lines = mt.after.slice();
       if (current.choice === 'attract') lines.push([ch.id, '‘' + mt.hidden + '’', 'hidden']);
@@ -659,29 +714,33 @@
   function resultHead(r) {
     return `
       <div class="result-stars" aria-label="별 ${r.stars}개">${starsHtml(r.stars)}</div>
-      <p class="result-meta">이동 ${r.moves}번 · 3별 목표 ${r.par + 1}번${r.usedTools ? ' · 도구를 쓰면 별은 최대 2개' : ''}</p>`;
+      <p class="result-meta">이동 ${r.moves}번 · 3별 목표 ${starGoal(r.par)}번 이내${r.usedTools ? ' · 도구를 쓰면 별은 최대 2개' : ''}</p>`;
+  }
+  function factChips(ch, list) {
+    if (!list || !list.length) return '';
+    return `<div class="fact-chips"><span class="fact-chips-title">새로 알아낸 것</span>${list.map((i) => `<span class="fact-chip"><b>${esc(ch.facts[i][0])}</b>${esc(ch.facts[i][1])}</span>`).join('')}</div>`;
   }
   function showMeetingResult(r) {
     const { ch, n } = r;
     showScreen('play');
-    const next = n === 4
-      ? (deduction(ch) ? `<button class="btn primary" data-go="${levelId(ch.id, 5)}">하트볼트로</button>` : `<button class="btn primary" data-act="deduce" data-ch="${ch.id}">${ICON.spark} 성향 추리하기</button>`)
-      : `<button class="btn primary" data-go="${levelId(ch.id, n + 1)}">다음 만남</button>`;
-    let notes = `<p class="reward clue-reward"><span>성향 노트에 단서 추가</span>${esc(r.clue)}</p>`;
-    if (r.first && n === 1 && C.characters.some((c) => c.unlockAfter === ch.id) && !save.unlockAll) {
-      notes += `<p class="reward">${C.characters.filter((c) => c.unlockAfter === ch.id).map((c) => c.name).join('와 ')}의 하트볼트도 보이기 시작했어요. 새 공략 대상이 열렸습니다.</p>`;
-    }
+    const stepNow = ch.deductions.findIndex((d) => d.after === n);
+    const deduceNow = stepNow >= 0 && canDeduce(ch, stepNow);
+    const next = deduceNow
+      ? `<button class="btn primary" data-act="deduce" data-ch="${ch.id}" data-step="${stepNow}">${ICON.spark} 성향 추리하기</button>`
+      : n === 4 && !dedStep(ch, 1) ? `<button class="btn primary" data-go="${ch.id}">공략 노트</button>`
+        : `<button class="btn primary" data-go="${levelId(ch.id, n + 1)}">${n === 4 ? '하트볼트로' : '다음 만남'}</button>`;
     openSheet(`
       ${resultHead(r)}
-      <p class="inject-line">${esc(S.ability.name)} · 볼트 ${n}/6 해제</p>
-      ${gaugeHtml(r.after)}
+      <p class="inject-line">볼트 ${n}/6 해제</p>
+      ${factChips(ch, r.facts)}
       <p class="result-meta">${deltaText('신뢰', r.before.trust, r.after.trust)} · ${deltaText('끌림', r.before.attraction, r.after.attraction)}</p>
-      ${fragmentHtml(ch, n, true)}
-      ${notes}
+      ${r.first ? fragmentHtml(ch, n) : ''}
+      ${r.clue ? `<p class="reward clue-reward"><span>성향 노트에 단서 추가</span>${esc(r.clue)}</p>` : ''}
+      ${deduceNow ? '<p class="reward">단서가 모였어요. 그녀의 성향을 추리해 보세요.</p>' : ''}
+      ${r.first && n === 1 && C.characters.some((c) => c.unlockAfter === ch.id) && !save.unlockAll ? '<p class="reward">다른 사람의 하트볼트도 보이기 시작했어요.</p>' : ''}
       ${r.reward ? `<p class="reward">${r.reward}</p>` : ''}
       <div class="actions">
         <button class="btn" data-act="replay">${ICON.restart} 다시 만나기</button>
-        <button class="btn" data-go="${ch.id}">공략 노트</button>
         ${next}
       </div>`);
   }
@@ -691,9 +750,9 @@
     openSheet(`
       ${resultHead(r)}
       <p class="inject-line">하트볼트 해제</p>
-      ${gaugeHtml(r.after)}
+      ${factChips(ch, r.facts)}
       <p class="result-meta">${deltaText('신뢰', r.before.trust, r.after.trust)} · ${deltaText('끌림', r.before.attraction, r.after.attraction)}</p>
-      ${fragmentHtml(ch, 5, true)}
+      ${fragmentHtml(ch, 5)}
       <p class="reward">세이프워드 ‘${esc(routeOf(ch).safeword)}’를 약속했어요. 둘만의 밤이 열렸습니다.</p>
       ${r.reward ? `<p class="reward">${r.reward}</p>` : ''}
       <div class="actions">
@@ -707,19 +766,19 @@
     const ed = routeOf(ch).endings[ending];
     const note = {
       exposed: '그녀를 알아낸 만큼 믿음을 쌓지 못했습니다. 신뢰 선택으로 그녀의 선을 존중해 보세요.',
-      hesitant: '그녀의 마음에 충분히 닿지 못했습니다. 성향 추리를 맞히고, 그녀가 원하는 방식으로 반응해 보세요.',
+      hesitant: '그녀의 마음에 충분히 닿지 못했습니다. 성향 추리 두 단계를 모두 맞히고, 그녀가 원하는 방식으로 반응해 보세요.',
     }[ending];
     openSheet(`
       <p class="ending-badge ending-${ending}">${S.endingTypes[ending].name}${r.isNew ? ' · 새 엔딩' : ''}</p>
       <h2 class="ending-title">${esc(ed.title)}</h2>
       ${resultHead(r)}
-      ${gaugeHtml(r.after)}
-      ${ending === 'love' ? fragmentHtml(ch, 6, true) : `${fragmentHtml(ch, 5, true)}<p class="muted center">${note}</p>`}
-      <p class="result-meta">${ch.name} 엔딩 ${endingCount(ch)}/3</p>
+      ${factChips(ch, r.facts)}
+      ${ending === 'love' ? fragmentHtml(ch, 6) : `${fragmentHtml(ch, 5)}<p class="muted center">${note}</p>`}
+      <p class="result-meta">${esc(displayName(ch))} 엔딩 ${endingCount(ch)}/3</p>
       ${r.reward ? `<p class="reward">${r.reward}</p>` : ''}
       <div class="actions">
         <button class="btn" data-go="${ch.id}">공략 노트</button>
-        ${ending === 'love' ? `<button class="btn primary" data-act="viewer" data-ch="${ch.id}">${ICON.image} 일러스트 보기</button>` : `<button class="btn primary" data-go="${levelId(ch.id, 1)}">처음 만남부터 다시</button>`}
+        ${ending === 'love' ? `<button class="btn primary" data-act="album" data-ch="${ch.id}" data-key="love">${ICON.image} 일러스트 보기</button>` : `<button class="btn primary" data-go="${levelId(ch.id, 1)}">처음 만남부터 다시</button>`}
       </div>`);
   }
 
@@ -736,15 +795,43 @@
 
   function mk(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
 
+  // 역할 능력을 레벨에 적용합니다. 모두 퍼즐을 쉽게 만드는 방향이라 풀 수 있음이 유지됩니다.
+  function applyAbilities(level, abilities) {
+    const lv = JSON.parse(JSON.stringify(level));
+    if (abilities.includes('tame')) lv.screws.forEach((s) => { if (s.brat) { delete s.brat; s.tamed = true; } });
+    if (abilities.includes('lead')) lv.screws.forEach((s) => { if (s.ice && !s.guard) { delete s.ice; s.eased = true; } });
+    if (abilities.includes('knot')) lv.planks.forEach((p) => { if (p.tie) { p.untied = p.tie; delete p.tie; } });
+    if (abilities.includes('care')) {
+      lv.screws.forEach((s) => { if (s.lock) { delete s.lock; s.eased = true; } });
+      lv.planks.forEach((p) => { if (p.key) { delete p.key; p.cared = true; } });
+    }
+    return lv;
+  }
+  // 이 레벨에서 실제로 효과가 있는 능력
+  function usefulAbilities(level, abilities) {
+    const has = {
+      tame: level.screws.some((s) => s.brat),
+      audience: level.planks.some((p) => p.glass),
+      lead: level.screws.some((s) => s.ice && !s.guard),
+      knot: level.planks.some((p) => p.tie),
+      care: level.screws.some((s) => s.lock),
+      freebit: level.screws.some((s) => s.head),
+    };
+    return abilities.filter((a) => has[a]);
+  }
+
   // variant: 'safe' | 'deep' | null. 선택지·추리 결과에 맞는 퍼즐 변형을 씁니다.
   function startPlay(ch, n, variant) {
     const id = levelId(ch.id, n);
     const base = LV[id];
     const v = variant && base.variants ? base.variants[variant] : null;
-    const level = v ? Object.assign({}, base, { tray: v.tray, par: v.par, screws: v.screws || base.screws }) : base;
-    P = { ch, n, id, level, variant, effect: v ? v.effect : null, model: R.buildModel(level) };
+    const raw = v ? Object.assign({}, base, { tray: v.tray, par: v.par, screws: v.screws || base.screws }) : base;
+    const abilities = usefulAbilities(raw, abilitiesOf(ch));
+    const level = applyAbilities(raw, abilities);
+    const model = R.buildModel(level, { glassPass: abilities.includes('audience'), freeBit: abilities.includes('freebit') });
+    P = { ch, n, id, level, variant, abilities, effect: v ? v.effect : null, model };
     resetPuzzle();
-    $('#play-title').textContent = n === 5 ? `${ch.name} · 하트볼트` : n === 6 ? `${ch.name} · 둘만의 밤` : `${ch.name} · 만남 ${n}`;
+    $('#play-title').textContent = n === 5 ? `${displayName(ch)} · 하트볼트` : n === 6 ? `${displayName(ch)} · 둘만의 밤` : `${displayName(ch)} · 만남 ${n}`;
     $('#play-sub').textContent = n === 5 ? '그녀의 가장 깊은 볼트' : n === 6 ? '그녀가 스스로 열어 둔 마지막 볼트' : ch.stages[n - 1].title;
     $('#screen-play').style.setProperty('--accent', ch.accent);
     showScreen('play');
@@ -772,7 +859,9 @@
     P.moving = null;
     P.shake = null;
     P.hint = null;
-    P.bitFlash = 0;
+    P.whisper = null;
+    P.whispered = {};
+    P.newFacts = [];
     P.rot = P.st.screws.map((_, i) => ((i * 47) % 90) * Math.PI / 180);
     P.keyWasAlive = R.keyAlive(P.model, P.st);
     P.tutorialStep = 0;
@@ -799,7 +888,13 @@
       coach('반짝이는 나사를 눌러 들어 올리세요.');
       return;
     }
-    // 기믹 A는 만남 2, 기믹 B는 만남 3에서 처음 소개합니다
+    // 역할 능력이 이 퍼즐에 작동하면 먼저 알려 줍니다
+    if (P.abilities.length) {
+      const ab = C.abilities[P.abilities[0]];
+      coach(`역할 능력 · ${ab.name} — ${ab.desc}`, 4500);
+      return;
+    }
+    // 기믹은 처음 나올 때 한 번만 짧게 소개합니다 (성향 이름은 추리 전까지 숨김)
     const intro = P.n === 2 ? P.ch.gimmicks[0] : P.n === 3 ? P.ch.gimmicks[1] : null;
     if (intro && !save.seen[intro]) {
       save.seen[intro] = true; persist();
@@ -813,7 +908,7 @@
     }
     if (P.variant) {
       const fx = P.variant === 'safe' ? '보관 구멍 +1' : P.effect === 'guard' ? '경계 나사 +2' : '보관 구멍 -1';
-      coach(P.n === 5 ? (P.variant === 'safe' ? `추리 적중 · ${fx}` : `추리 빗나감 · ${fx}`) : fx, 3000);
+      coach(P.n === 5 ? (P.variant === 'safe' ? `성향을 알아봤어요 · ${fx}` : `성향을 잘못 짚었어요 · ${fx}`) : fx, 2500);
     }
   }
   function tutorialEvent(ev) {
@@ -827,7 +922,7 @@
   function updateHud() {
     if (!P) return;
     $('#hud-moves').innerHTML = `이동 <b>${P.st.moves}</b>`;
-    $('#hud-goal').innerHTML = `★★★ 목표 <b>${P.level.par + 1}</b>번 이내`;
+    $('#hud-goal').innerHTML = `★★★ 목표 <b>${starGoal(P.level.par)}</b>번 이내`;
     const t = save.tools;
     const hm = $('#tool-hammer'), ho = $('#tool-hole'), hi = $('#tool-hint'), bt = $('#tool-bit');
     hm.innerHTML = `${ICON.hammer}<span>망치</span><span class="count">${t.hammer}</span>`;
@@ -841,7 +936,7 @@
     bt.hidden = !P.model.hasSwitch;
     if (P.model.hasSwitch) {
       const lead = P.st.bit === 'lead';
-      bt.innerHTML = `<span class="bit-dot ${lead ? 'lead' : 'follow'}"></span><span>${lead ? '이끄는 ▲' : '따르는 ▼'}</span><span class="bit-sub">비트 바꾸기</span>`;
+      bt.innerHTML = `<span class="bit-dot ${lead ? 'lead' : 'follow'}"></span><span>${lead ? '이끄는 ▲' : '따르는 ▼'}</span><span class="bit-sub">${P.model.freeBit ? '비트 바꾸기 · 무료' : '비트 바꾸기'}</span>`;
       bt.setAttribute('aria-label', `드라이버 비트: ${lead ? '이끄는 쪽' : '따르는 쪽'}. 누르면 바꿉니다(이동 1회).`);
       bt.disabled = P.won || P.busy;
       bt.classList.toggle('hint-glow', !!(P.hint && P.hint.kind === 'bit'));
@@ -957,6 +1052,14 @@
       plankPath(m, P.model.planks[z], 0, 3);
       m.fill();
     });
+    if (P.abilities && P.abilities.includes('audience')) {
+      P.model.planks.forEach((p, z) => {
+        if (!p.glass || !P.st.alive[z]) return;
+        m.globalAlpha = 1;
+        plankPath(m, p, 0, 0);
+        m.fill();
+      });
+    }
     m.globalAlpha = 1;
     m.shadowBlur = 0;
     const r = reveal.getContext('2d');
@@ -1151,7 +1254,10 @@
       c.fillStyle = gl; c.fillRect(0, 0, LW, LH);
       c.restore();
       plankPath(c, p, oy);
-      c.lineWidth = 2; c.strokeStyle = 'rgba(225,242,255,0.9)'; c.stroke();
+      const allowed = P.abilities && P.abilities.includes('audience');
+      if (allowed) c.setLineDash([5, 4]);
+      c.lineWidth = 2; c.strokeStyle = allowed ? 'rgba(255,170,200,0.95)' : 'rgba(225,242,255,0.9)'; c.stroke();
+      c.setLineDash([]);
     } else {
       c.shadowColor = 'rgba(0,0,0,0.45)';
       c.shadowBlur = 8 * k;
@@ -1253,6 +1359,12 @@
           c.beginPath(); c.moveTo(x + dx * r * 0.85, yy + dy * r * 0.85); c.lineTo(x + dx * r * 1.05, yy + dy * r * 1.08); c.stroke();
         });
       }
+    }
+    const def = P.level.screws[sid];
+    if (def && def.tamed && !lift) {
+      heartPath(c, x + r * 0.85, yy - r * 0.85, 4.2);
+      c.fillStyle = '#ff8fb1'; c.fill();
+      c.lineWidth = 1; c.strokeStyle = 'rgba(90,20,40,0.7)'; c.stroke();
     }
     if (iced) {
       const s2 = r * 1.4;
@@ -1444,6 +1556,7 @@
       const y = m.from[1] + (m.to[1] - m.from[1]) * e - Math.sin(Math.PI * u) * hop - 7 * (1 - u);
       drawScrew(c, m.sid, x, y, u < 0.85, t);
     }
+    drawWhisper(c, t);
     if (P.injectT > 0) drawUnlock(c);
   }
 
@@ -1556,12 +1669,12 @@
       toast('판을 눌러 주세요.');
       return;
     }
-    let best = null, bd = 24 * 24;
+    let best = null, bd = 24 * 24, hidden = null, hd = 24 * 24;
     P.st.screws.forEach((s, sid) => {
       const status = R.screwStatus(P.model, P.st, sid);
-      if (status === 'blocked') return;
       const [sx, sy] = holePos(s.h);
       const d = (sx - x) ** 2 + (sy - y) ** 2;
+      if (status === 'blocked') { if (d < hd) { hd = d; hidden = sid; } return; }
       if (d < bd) { bd = d; best = { type: 'screw', sid, status }; }
     });
     if (P.sel >= 0) {
@@ -1572,7 +1685,15 @@
         if (d < bd) { bd = d; best = { type: 'hole', h }; }
       }
     }
-    if (!best) { if (P.sel >= 0) { P.sel = -1; } return; }
+    if (!best) {
+      // 무대 유리 아래에 비쳐 보이는 나사를 누르면 그녀가 속삭입니다
+      if (hidden != null && underGlass(hidden)) {
+        const [sx, sy] = screwPosNow(hidden);
+        whisper('glass', sx, sy);
+      }
+      if (P.sel >= 0) { P.sel = -1; }
+      return;
+    }
     if (best.type === 'hole') { doAction({ kind: 'move', sid: P.sel, h: best.h }, now); return; }
     if (best.status === 'free') {
       P.sel = P.sel === best.sid ? -1 : best.sid;
@@ -1587,14 +1708,69 @@
     P.shake = { sid: best.sid, t0: now };
     sfx('deny');
     const sc = P.st.screws[best.sid];
+    const [wx, wy] = screwPosNow(best.sid);
     if (best.status === 'ice') {
       const left = sc.ice - P.st.moves;
-      coach(sc.guard ? `그녀가 경계하고 있어요. 다른 나사를 ${left}번 더 옮기면 풀려요.` : `긴장이 아직 풀리지 않았어요. 다른 나사를 ${left}번 더 옮기면 풀려요.`, 2200);
+      if (sc.guard) coach(`그녀가 경계하고 있어요. 다른 나사를 ${left}번 더 옮기면 풀려요.`, 2200);
+      else { whisper('tension', wx, wy); coach(`다른 나사를 ${left}번 더 옮겨 먼저 이끌어 주세요.`, 2200); }
     } else if (best.status === 'lock') {
-      coach('규칙 나사예요. 조건이 그려진 판을 먼저 떨어뜨리세요.', 2200);
+      whisper('rule', wx, wy);
+      coach('조건이 그려진 판을 먼저 떨어뜨리세요.', 2200);
     } else if (best.status === 'bit') {
-      coach(`지금 비트로는 돌릴 수 없어요. ${sc.head === 'lead' ? '이끄는 쪽' : '따르는 쪽'} 비트로 바꾸세요.`, 2200);
+      whisper('switch', wx, wy, sc.head);
+      coach(`${sc.head === 'lead' ? '이끄는 쪽(▲)' : '따르는 쪽(▼)'} 비트로 바꿔야 돌릴 수 있어요.`, 2200);
     }
+  }
+
+  /* ---------- 속삭임: 기믹이 작동할 때 그녀가 성향을 드러내는 짧은 말 ---------- */
+  function whisper(gimmick, x, y, key) {
+    if (!P.ch.gimmicks.includes(gimmick)) return;
+    const w = C.gimmicks[gimmick].whispers;
+    const list = Array.isArray(w) ? w : w[key] || [];
+    if (!list.length) return;
+    const n = (P.whispered[gimmick] = (P.whispered[gimmick] || 0) + 1);
+    P.whisper = { text: list[(n - 1) % list.length], x, y, t0: performance.now() };
+  }
+  function underGlass(sid) {
+    const hole = P.model.holes[P.st.screws[sid].h];
+    return !hole.tray && hole.cover.some((c) => P.st.alive[c.p] && !c.hole && P.model.planks[c.p].glass);
+  }
+  // 리본으로 묶인 판 중 나사는 다 빠졌는데 짝 때문에 남아 있는 판이 있으면 한 번 속삭입니다
+  function ribbonWhisper() {
+    if (!P || P.won) return;
+    for (const [tie, zs] of Object.entries(P.model.ties)) {
+      if (P.whispered['tie' + tie]) continue;
+      const z = zs.find((q) => P.st.alive[q] && !P.model.planks[q].holeIdx.some((h) => P.st.occ[h] >= 0));
+      if (z === undefined) continue;
+      P.whispered['tie' + tie] = true;
+      const g = plankGeom(P.model.planks[z]);
+      whisper('ribbon', g.cx, g.cy + BY);
+      return;
+    }
+  }
+  function drawWhisper(c, t) {
+    const w = P.whisper;
+    if (!w) return;
+    const age = (t - w.t0) / 1000;
+    if (age > 2.2) { P.whisper = null; return; }
+    const a = Math.min(1, age / 0.15, (2.2 - age) / 0.35);
+    c.save();
+    c.globalAlpha = Math.max(0, a);
+    c.font = '700 12.5px "Gowun Batang", "IBM Plex Sans KR", serif';
+    const tw = c.measureText(w.text).width;
+    const bw = tw + 22, bh = 28;
+    const bx = Math.max(6, Math.min(LW - bw - 6, w.x - bw / 2));
+    const by = Math.max(4, w.y - 46 - age * 6);
+    c.beginPath(); rr(c, bx, by, bw, bh, 12);
+    c.fillStyle = 'rgba(42,16,34,0.94)'; c.fill();
+    c.lineWidth = 1.5; c.strokeStyle = P.ch.accent; c.stroke();
+    c.beginPath();
+    const tx = Math.max(bx + 14, Math.min(bx + bw - 14, w.x));
+    c.moveTo(tx - 6, by + bh); c.lineTo(tx, by + bh + 7); c.lineTo(tx + 6, by + bh); c.closePath();
+    c.fillStyle = 'rgba(42,16,34,0.94)'; c.fill();
+    c.fillStyle = '#ffe3ea'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(w.text, bx + bw / 2, by + bh / 2 + 1);
+    c.restore();
   }
 
   function spawnParticles(z) {
@@ -1624,9 +1800,17 @@
       tutorialEvent('fall');
       if (list.some((z) => P.model.planks[z].tie)) coach('리본으로 묶인 판이 함께 떨어졌어요.', 2000);
     }
+    // 판이 절반 떨어지면 이 만남의 첫 번째 정보가 열립니다
+    const dead = P.st.alive.filter((a) => !a).length;
+    const fa = 2 * (P.n - 1);
+    if (list.length && dead * 2 >= P.st.alive.length && learnFact(P.ch, fa)) {
+      P.newFacts.push(fa);
+      const f = P.ch.facts[fa];
+      setTimeout(() => { if (P && !P.tutorialStep && !P.won) coach(`알아낸 것 · ${f[0]}: ${f[1]}`, 2800); }, 350);
+    }
     if (P.keyWasAlive && !R.keyAlive(P.model, P.st)) {
       P.keyWasAlive = false;
-      setTimeout(() => { sfx('unlock'); coach('조건을 지켰어요. 규칙 나사가 모두 풀렸습니다.', 2400); }, 200);
+      setTimeout(() => { sfx('unlock'); coach('조건을 지켰어요. 조건 나사가 모두 풀렸습니다.', 2400); }, 200);
     }
   }
 
@@ -1655,6 +1839,7 @@
     const token = P.token;
     if (a.kind === 'provoke') {
       sfx('deny');
+      whisper('brat', to[0], to[1]);
       coach(save.seen.bratTease ? '반항! 다른 구멍으로 달아났어요.' : '반항! 빠지지 않고 다른 구멍으로 달아났어요. 이제부터는 순순히 빠집니다.', 2200);
       save.seen.bratTease = true; persist();
     } else {
@@ -1666,6 +1851,7 @@
       P.busy = false;
       sfx('place');
       startFalls(res.fallen);
+      ribbonWhisper();
       updateHud();
       afterChange();
     }, P.moving.dur);
@@ -1720,9 +1906,11 @@
       </div>`);
   }
 
+  // 별 기준: 3별은 최소 이동 수의 1.5배 + 1 이내, 2별은 2배 + 2 이내
+  function starGoal(par) { return Math.ceil(par * 1.5) + 1; }
   function calcStars() {
     const par = P.level.par;
-    let s = P.st.moves <= par + 1 ? 3 : P.st.moves <= Math.ceil(par * 1.5) + 1 ? 2 : 1;
+    let s = P.st.moves <= starGoal(par) ? 3 : P.st.moves <= par * 2 + 2 ? 2 : 1;
     if (P.usedTools) s = Math.min(s, 2);
     return s;
   }
@@ -1737,8 +1925,7 @@
     const pick = e.target.closest('[data-pick]');
     if (pick) {
       const v = pick.getAttribute('data-pick');
-      if (deducePicks.includes(v)) deducePicks = deducePicks.filter((x) => x !== v);
-      else { deducePicks.push(v); if (deducePicks.length > 2) deducePicks.shift(); }
+      deducePick = deducePick === v ? null : v;
       if (openDeduction.render) openDeduction.render();
       return;
     }
@@ -1760,9 +1947,9 @@
       if (!resetArmed) { resetArmed = true; el.textContent = '한 번 더 누르면 초기화'; return; }
       save = defaultSave(); persist(); closeSheet(); toast('진행 상황을 초기화했어요.'); go('');
     }
-    else if (act === 'deduce') { openDeduction(charById(el.getAttribute('data-ch'))); }
-    else if (act === 'deduce-confirm') { confirmDeduction(charById(el.getAttribute('data-ch'))); }
-    else if (act === 'viewer') { closeSheet(); openViewer(charById(el.getAttribute('data-ch'))); }
+    else if (act === 'deduce') { openDeduction(charById(el.getAttribute('data-ch')), +(el.getAttribute('data-step') || 0)); }
+    else if (act === 'deduce-confirm') { confirmDeduction(charById(el.getAttribute('data-ch')), +(el.getAttribute('data-step') || 0)); }
+    else if (act === 'album' || act === 'viewer') { closeSheet(); openViewer(charById(el.getAttribute('data-ch')), el.getAttribute('data-key') || 'love'); }
     else if (act === 'close-viewer') {
       $('#viewer').hidden = true;
       if ($('#screen-chapter').hidden && current) go(current.ch.id);
