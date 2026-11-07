@@ -4,6 +4,16 @@
 
 연애 시뮬레이션 구성은 [docs/romance-direction.md](docs/romance-direction.md), 퍼즐 규칙과 Unity 이식 방법은 [docs/game-design.md](docs/game-design.md)에 정리했습니다.
 
+## 언스크류(UNCREW) 프로토타입
+
+> 풀수록, 더 깊이 얽힌다.
+
+회귀 생존 미스터리 「언스크류(UNCREW)」의 첫 사건(D-30 「어제의 전달 목록」) P0 프로토타입은 [`uncrew/`](uncrew/) 폴더에 있습니다. 하트볼트 프로토타입과는 별개이며, 실행 방법·조작 방법·테스트 결과·알려진 제한은 [uncrew/README.md](uncrew/README.md)에 정리했습니다.
+
+```bash
+cd uncrew && python3 -m http.server 8000
+```
+
 ## 바로 플레이하기
 
 **https://kenihy.github.io/ScrewPuzzle/**

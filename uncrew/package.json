@@ -1,0 +1,15 @@
+{
+  "name": "uncrew-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "description": "언스크류(UNCREW) 첫 사건 P0 웹 프로토타입",
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "test": "node --test \"tests/*.test.js\"",
+    "e2e": "node tools/e2e-playthrough.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
