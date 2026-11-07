@@ -81,9 +81,18 @@ test('안내 데이터: 모든 단서에 판단 힌트가 있고, 깊이·용어
   assert.equal(awakenGoal.list, LIFE_GOALS, '각성 장면 목표 카드와 노트가 같은 목표를 씀');
 });
 
-test('프롤로그는 십 년의 배경 → 마지막 서른 날 → 죽음의 밤 순서로 사건 경위를 보여 준다', () => {
+test('프롤로그는 십 년의 배경 → 회장실 청소부 → 마지막 30일 → 죽음의 밤 순서로 사건 경위와 심리를 보여 준다', () => {
   const cards = NODES.PROLOGUE.lines.filter((l) => l.card).map((l) => l.card);
-  assert.deepEqual(cards, ['십 년 전', '마지막 서른 날']);
+  assert.deepEqual(cards, ['십 년 전', '회장실 청소부', '마지막 30일']);
   const all = NODES.PROLOGUE.lines.map((l) => l.text || l.narr || '').join(' ');
   for (const key of ['병원비', '승계 작업', '외부 변호사', '송금 승인서', '감사팀', '횡령', '셔터']) assert.ok(all.includes(key), key);
+  // 무력이 아닌 전략으로 일하던 해결사, 모든 판을 안다는 자만, 배신의 모욕감, 이유를 짐작만 하는 상태
+  for (const key of ['주먹을 쓰지 않았다', '회장실 청소부', '내가 모르는 판은 없다', '모욕감', '무엇을 알아서인가']) assert.ok(all.includes(key), key);
+});
+
+test('표기: 날짜는 30일로 쓰고, 현대 배경에 어울리지 않는 사무용품 표현을 쓰지 않는다', async () => {
+  const C = await import('../src/data/case01.js');
+  const texts = JSON.stringify([C.NODES, C.CLUES, C.TOPICS, C.CHARACTERS, C.ENDINGS, C.SITUATION, C.LIFE_GOALS, C.TUTORIAL, C.HUB, C.BAND_LINES, C.REMOVAL_LINES, C.RESULT_COMMON]);
+  assert.ok(!texts.includes('서른 날'), '서른 날 → 30일');
+  for (const w of ['잉크', '만년필', '펜촉', '다이얼', '수화기', '형광등', '지우개', '결재판', '타자기', '전보', '삐삐']) assert.ok(!texts.includes(w), w);
 });

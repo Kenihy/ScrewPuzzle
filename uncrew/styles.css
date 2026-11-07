@@ -300,6 +300,7 @@ h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.02em; }
   animation: fadein .8s ease;
 }
 .card-overlay .big { font-family: var(--f-title); font-weight: 900; font-size: clamp(64px, 22vw, 108px); color: var(--gold-strong); letter-spacing: -0.03em; line-height: 1; }
+.card-overlay .big.long { font-size: clamp(40px, 12.5vw, 64px); letter-spacing: -0.02em; padding: 0 12px; word-break: keep-all; }
 .card-overlay .sub { color: var(--muted); margin-top: 8px; letter-spacing: .1em; }
 .blackout-overlay { position: absolute; inset: 0; background: #000; animation: fadein 1.2s ease; display: grid; place-items: center; color: #555; font-size: 22px; letter-spacing: .4em; }
 @keyframes fadein { from { opacity: 0; } }

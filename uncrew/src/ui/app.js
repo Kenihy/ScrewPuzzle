@@ -337,7 +337,7 @@ export function createApp({ root, side, debugEl, shell, game }) {
     let over = '';
     if (line?.card && line.list) {
       over = `<div class="card-overlay goal"><div class="goal-card"><span class="eyebrow">${esc(line.card)}</span><ol>${line.list.map((g) => `<li>${esc(T(g))}</li>`).join('')}</ol></div></div>`;
-    } else if (line?.card) over = `<div class="card-overlay"><div><div class="big">${esc(line.card)}</div><div class="sub">${esc(T(line.sub || ''))}</div></div></div>`;
+    } else if (line?.card) over = `<div class="card-overlay"><div><div class="big ${[...line.card].length > 4 ? 'long' : ''}">${esc(line.card)}</div><div class="sub">${esc(T(line.sub || ''))}</div></div></div>`;
     if (line?.fx === 'blackout') over = `<div class="blackout-overlay">······</div>`;
     return `<div class="stage loc-${st.loc} ${st.dizzy ? 'dizzy' : ''}">
       <div class="bg"></div>
