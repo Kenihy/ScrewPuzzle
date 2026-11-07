@@ -4,30 +4,27 @@
 
 연애 시뮬레이션 구성은 [docs/romance-direction.md](docs/romance-direction.md), 퍼즐 규칙과 Unity 이식 방법은 [docs/game-design.md](docs/game-design.md)에 정리했습니다.
 
-## 언스크류(UNCREW) 프로토타입
-
-> 풀수록, 더 깊이 얽힌다.
-
-회귀 생존 미스터리 「언스크류(UNCREW)」의 첫 사건(D-30 「어제의 전달 목록」) P0 프로토타입은 [`uncrew/`](uncrew/) 폴더에 있습니다. 하트볼트 프로토타입과는 별개이며, 실행 방법·조작 방법·테스트 결과·알려진 제한은 [uncrew/README.md](uncrew/README.md)에 정리했습니다.
-
-```bash
-cd uncrew && python3 -m http.server 8000
-```
-
 ## 바로 플레이하기
 
 **https://kenihy.github.io/ScrewPuzzle/**
 
-휴대폰이나 PC 브라우저에서 위 주소를 열면 바로 플레이할 수 있습니다. 로그인이나 설치는 필요 없습니다. PC 화면에 있는 아래 QR 코드를 휴대폰 카메라로 찍어도 됩니다.
+휴대폰이나 PC 브라우저에서 위 주소를 열면 최신 프로토타입인 **언스크류(UNCREW)** 가 바로 실행됩니다. 로그인이나 설치는 필요 없습니다. PC 화면에 있는 아래 QR 코드를 휴대폰 카메라로 찍어도 됩니다.
 
 <img src="docs/play-qr.png" alt="플레이 주소 QR 코드" width="180">
+
+| 프로토타입 | 주소 | 설명 |
+|---|---|---|
+| 언스크류 (UNCREW) | https://kenihy.github.io/ScrewPuzzle/ | 회귀 생존 미스터리. 첫 사건(D-30 「어제의 전달 목록」) P0. 자세한 내용은 [uncrew/README.md](uncrew/README.md) |
+| 하트볼트 (Heartbolt) | https://kenihy.github.io/ScrewPuzzle/prototype/ | 이전 프로토타입. 이 문서의 아래 내용은 하트볼트 기준입니다. |
+
+> 풀수록, 더 깊이 얽힌다. — 언스크류(UNCREW)
 
 휴대폰에서는 홈 화면에 추가하면 주소창 없이 앱처럼 전체 화면으로 실행됩니다.
 
 - iPhone(Safari): 공유 버튼 → **홈 화면에 추가**
 - Android(Chrome): 오른쪽 위 메뉴(⋮) → **홈 화면에 추가** 또는 **앱 설치**
 
-주소 끝에 `#mio-3`처럼 만남 이름을 붙이면 해당 만남으로 바로 들어갑니다. 잠긴 만남은 설정의 **모든 만남 열기**를 켜야 열립니다.
+하트볼트는 `prototype/#mio-3`처럼 주소 끝에 만남 이름을 붙이면 해당 만남으로 바로 들어갑니다. 잠긴 만남은 설정의 **모든 만남 열기**를 켜야 열립니다.
 
 ### 배포 설정 (처음 한 번)
 
@@ -36,7 +33,7 @@ cd uncrew && python3 -m http.server 8000
 1. **Build and deployment → Source**: `Deploy from a branch`
 2. **Branch**: `claude/festive-einstein-f8t2vo`, 폴더 `/ (root)` → **Save**
 
-저장소 루트의 `index.html`이 방문자를 `prototype/`으로 보내 줍니다.
+저장소 루트의 `index.html`이 방문자를 `uncrew/`(언스크류)로 보내 줍니다. 언스크류는 컴퓨터에서 `uncrew/index.html`을 브라우저로 바로 열어도(더블클릭) 실행됩니다. 하트볼트를 컴퓨터에서 실행하는 방법은 아래 **내 컴퓨터에서 실행**을 참고하세요.
 
 ## 구성
 

@@ -5,9 +5,10 @@
  * 퍼즐은 화면의 나사·구멍 위치를 논리 좌표 → 화면 좌표로 바꿔 실제로 클릭합니다.
  * 개발자 콘솔 조작이나 자동 풀이 기능은 쓰지 않습니다. (보드 좌표를 읽기 위해서만 __uncrew를 참조)
  *
- * 실행: 정적 서버를 띄운 뒤
+ * 실행: 정적 서버를 띄우거나 파일 주소를 직접 넘깁니다.
  *   python3 -m http.server 8123
  *   UNCREW_URL=http://localhost:8123/ node tools/e2e-playthrough.mjs
+ *   UNCREW_URL=file:///<저장소 경로>/uncrew/index.html node tools/e2e-playthrough.mjs
  * 필요: Playwright 1.63.0 (프로젝트 의존성이 아니라 검증 도구입니다)
  * 스크린샷: SHOTS 환경 변수 폴더에 저장 (기본값: 저장 안 함)
  */
