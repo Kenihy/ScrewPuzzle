@@ -17,6 +17,7 @@ import { getBoard, TUTORIAL_BOARD } from '../data/puzzles.js';
 import { evaluate } from './conditions.js';
 import * as PE from './puzzleEngine.js';
 import { SaveService, EventLog } from './save.js';
+import { validatePlayerName, DEFAULT_PLAYER } from './names.js';
 
 export const R = {
   BAD_NODE: 'BAD_NODE',
@@ -36,6 +37,7 @@ export const R = {
   NO_TARGET: 'NO_TARGET',
   TUTORIAL_NO_ITEMS: 'TUTORIAL_NO_ITEMS',
   NOT_CLEARED: 'NOT_CLEARED',
+  BAD_NAME: 'BAD_NAME',
 };
 
 const emptyInventory = () => Object.fromEntries(ITEM_IDS.map((i) => [i, 0]));
@@ -47,14 +49,16 @@ export function createMeta() {
     endingsSeen: [],
     tutorialSeen: false,
     runsStarted: 0,
+    lastPlayer: null,
     settings: { muted: false, textSpeed: 'normal', debug: false },
   };
 }
 
-export function createRun({ runId, nodeId, now }) {
+export function createRun({ runId, nodeId, now, player = null }) {
   return {
     schemaVersion: SCHEMA_VERSION,
     runId,
+    player: player ? { surname: player.surname, given: player.given } : null,
     caseId: CASE_ID,
     nodeId,
     daysRemaining: INITIAL_RUN.daysRemaining,
@@ -187,7 +191,9 @@ export class Game {
   /** 사건 재도전: HAERIN_OPEN 이전 상태로. 도감·엔딩 기록은 유지하고 이번 시도 기록은 모두 초기화합니다. */
   retryCase() {
     const runId = this.makeRunId();
-    this.state.run = createRun({ runId, nodeId: CHECKPOINT_NODE, now: this.now() });
+    // 이름은 사건 재도전에서도 유지합니다. (재도전은 이름을 떠올린 이후 시점부터 시작)
+    const player = this.run?.player || this.meta.lastPlayer || DEFAULT_PLAYER;
+    this.state.run = createRun({ runId, nodeId: CHECKPOINT_NODE, now: this.now(), player });
     this.meta.runsStarted += 1;
     this.log.add('case_start', { runId, caseId: CASE_ID, from: 'retry' });
     this.commit();
@@ -220,6 +226,23 @@ export class Game {
     run.nodeId = node.next;
     this.commit();
     return { ok: true, nodeId: run.nodeId };
+  }
+
+  /* ----------------------------- 이름 입력 ----------------------------- */
+
+  /** 회귀 직후 이름을 떠올리는 장면. 규칙에 맞는 이름만 받습니다. (core/names.js) */
+  setPlayerName(input) {
+    const run = this.run;
+    if (!run || NODES[run.nodeId].type !== 'name') return { ok: false, reason: R.BAD_NODE };
+    const res = validatePlayerName(input);
+    if (!res.ok) return { ok: false, reason: R.BAD_NAME, errors: res.errors };
+    run.player = { ...res.player };
+    this.meta.lastPlayer = { ...res.player };
+    run.nodeId = NODES[run.nodeId].next;
+    // 이름 자체는 로그에 남기지 않습니다.
+    this.log.add('name_set', { runId: run.runId, length: res.player.surname.length + res.player.given.length, isDefault: res.player.surname === DEFAULT_PLAYER.surname && res.player.given === DEFAULT_PLAYER.given });
+    this.commit();
+    return { ok: true, player: run.player };
   }
 
   /* ----------------------------- DialogueEngine ----------------------------- */

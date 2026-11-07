@@ -7,7 +7,8 @@
  * - 깨진 저장은 별도 키로 보관하고 새 게임을 안내합니다. 잘못된 수치로 조용히 복원하지 않습니다.
  */
 import { SCHEMA_VERSION, ITEM_IDS } from '../data/config.js';
-import { NODES, CLUES, EVIDENCE, TOPICS, ENDINGS } from '../data/case01.js';
+import { NODES, NODE_ORDER, CLUES, EVIDENCE, TOPICS, ENDINGS } from '../data/case01.js';
+import { validatePlayerName, DEFAULT_PLAYER } from './names.js';
 import { getBoard } from '../data/puzzles.js';
 import { validatePuzzleState } from './puzzleEngine.js';
 
@@ -41,6 +42,25 @@ export function browserStorage() {
 }
 
 const isInt = (v) => Number.isInteger(v);
+
+/**
+ * 이전 저장 형식을 현재 형식으로 바꿉니다. 바꿀 수 없으면 그대로 돌려주고 검증에서 걸러집니다.
+ * v1 → v2: 주인공 이름(run.player)이 생겼습니다. v1은 이름이 '한도윤'으로 고정되어 있었으므로,
+ * 이름을 떠올리는 장면을 이미 지난 진행에는 기본 이름을 넣습니다.
+ */
+export function migrateSaveData(data) {
+  if (!data || typeof data !== 'object') return data;
+  if (data.schemaVersion === 1) {
+    const out = { ...data, schemaVersion: 2 };
+    out.meta = { ...(data.meta || {}), lastPlayer: null };
+    if (data.run && typeof data.run === 'object') {
+      const before = ['PROLOGUE', 'RETURN'].includes(data.run.nodeId);
+      out.run = { ...data.run, schemaVersion: 2, player: before ? null : { ...DEFAULT_PLAYER } };
+    }
+    return out;
+  }
+  return data;
+}
 const inRange = (v, lo, hi) => isInt(v) && v >= lo && v <= hi;
 
 /** 저장 데이터 스키마 검증. 문제 목록을 돌려줍니다. */
@@ -55,6 +75,7 @@ export function validateSaveData(data) {
     if (!Array.isArray(meta.endingsSeen) || meta.endingsSeen.some((e) => !ENDINGS[e])) errors.push('meta.endingsSeen');
     if (typeof meta.tutorialSeen !== 'boolean') errors.push('meta.tutorialSeen');
     if (!meta.settings || typeof meta.settings !== 'object') errors.push('meta.settings');
+    if (meta.lastPlayer != null && !validatePlayerName(meta.lastPlayer).ok) errors.push('meta.lastPlayer');
   }
   const run = data.run;
   if (run === null || run === undefined) return errors;
@@ -63,6 +84,8 @@ export function validateSaveData(data) {
   if (typeof run.runId !== 'string' || !run.runId) errors.push('run.runId');
   if (run.caseId !== 'CASE_01') errors.push('run.caseId');
   if (!NODES[run.nodeId]) errors.push('run.nodeId');
+  if (run.player != null && !validatePlayerName(run.player).ok) errors.push('run.player');
+  if (run.player == null && NODE_ORDER.indexOf(run.nodeId) > NODE_ORDER.indexOf('NAME_ENTRY')) errors.push('run.player missing');
   if (!inRange(run.suspicion, 0, 100)) errors.push('run.suspicion');
   if (!run.trust || !inRange(run.trust.HAERIN, 0, 100)) errors.push('run.trust');
   if (!inRange(run.focus, 0, 4)) errors.push('run.focus');
@@ -132,6 +155,7 @@ export class SaveService {
     } catch {
       return this.quarantine(raw, ['JSON parse error']);
     }
+    data = migrateSaveData(data);
     const errors = validateSaveData(data);
     if (errors.length) return this.quarantine(raw, errors);
     return { status: 'ok', data };

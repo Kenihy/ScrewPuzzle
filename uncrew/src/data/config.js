@@ -3,7 +3,7 @@
  * 수치는 테스트 후 조정할 수 있도록 한곳에 모았습니다.
  */
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2; // 2: 주인공 이름(run.player) 추가
 export const PROJECT = { title: '언스크류', titleEn: 'UNCREW', copy: '풀수록, 더 깊이 얽힌다.' };
 
 export const INITIAL_RUN = {

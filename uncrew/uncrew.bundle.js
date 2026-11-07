@@ -1,7 +1,7 @@
 /*
  * 언스크류(UNCREW) — 실행용 단일 스크립트
  * 자동 생성 파일입니다. 직접 고치지 말고 src/를 수정한 뒤 `node tools/build.mjs`를 실행하세요.
- * 포함 모듈: 14개 (진입점 src/main.js)
+ * 포함 모듈: 15개 (진입점 src/main.js)
  */
 (function () {
 'use strict';
@@ -23,7 +23,10 @@ __define("src/data/case01.js", function (__require) {
  *
  * 대본 줄 형식
  *   { who: 'HAERIN', text }            인물 대사
- *   { who: 'DOYUN', mono: true, text } 도윤의 속마음
+ *   { who: 'DOYUN', mono: true, text } 주인공의 속마음 (이름을 떠올리기 전에는 '나'로 표시)
+ *   { who: 'HAERIN', inner: true, text } 능력으로 들은 다른 인물의 속마음
+ *   { card, sub, list }                화면 중앙 카드 (list가 있으면 목록 카드)
+ *   {name} {surname} {fullname}        주인공 이름 자리 표시. {name:아}처럼 조사를 붙일 수 있습니다. (core/names.js)
  *   { narr }                           지문
  *   { card, sub }                      화면 중앙 카드 (예: D-30)
  *   { fx: 'blackout' }                 암전
@@ -47,15 +50,15 @@ const CASE_INFO = {
 };
 
 const CHARACTERS = {
-  DOYUN: { id: 'DOYUN', name: '한도윤', short: '도윤', age: 35, role: '태경그룹 회장실 해결사', note: '십 년 동안 회장의 일을 처리해 왔다. 첫 번째 삶에서 횡령범으로 조작된 채 살해당했다.' },
-  TAEGEON: { id: 'TAEGEON', name: '차태건', short: '차태건', age: 59, role: '태경그룹 회장', note: '가난하던 도윤에게 일자리와 기회를 준 사람. 사소한 취향과 가족 사정까지 기억한다.' },
+  DOYUN: { id: 'DOYUN', name: '{fullname}', short: '{name}', age: 35, role: '태경그룹 회장실 해결사', note: '십 년 동안 회장의 일을 처리해 왔다. 첫 번째 삶에서 횡령범으로 조작된 채 살해당했다.' },
+  TAEGEON: { id: 'TAEGEON', name: '차태건', short: '차태건', age: 59, role: '태경그룹 회장', note: '가난하던 {name}에게 일자리와 기회를 준 사람. 사소한 취향과 가족 사정까지 기억한다.' },
   HAERIN: { id: 'HAERIN', name: '서해린', short: '서해린', age: 37, role: '회장 비서실장', note: '흐트러짐 없는 업무와 절제된 태도. 회장실의 모든 일정과 문서가 그녀를 거친다.' },
   MUJIN: { id: 'MUJIN', name: '권무진', short: '권무진', age: 45, role: '보안실장', note: '예의 바르고 조용하다. 첫 번째 삶의 마지막 밤, 주차장에서 기다리던 사람.' },
-  SEOJIN: { id: 'SEOJIN', name: '윤서진', short: '윤 변호사', age: 34, role: '외부 변호사', note: '어제 도윤이 재단 결산 자료를 전달한 상대. 이번 사건에는 직접 등장하지 않는다.' },
+  SEOJIN: { id: 'SEOJIN', name: '윤서진', short: '윤 변호사', age: 34, role: '외부 변호사', note: '어제 {name:이} 재단 결산 자료를 전달한 상대. 이번 사건에는 직접 등장하지 않는다.' },
 };
 
 const SPEAKER_LABEL = {
-  DOYUN: '도윤',
+  DOYUN: '나', // 이름을 떠올린 뒤에는 입력한 이름으로 표시합니다.
   TAEGEON: '차태건',
   TAEGEON_ECHO: '차태건 · 기억 속 목소리',
   HAERIN: '서해린',
@@ -67,16 +70,16 @@ const SPEAKER_LABEL = {
 /* ------------------------------------------------------------------ */
 
 const CLUES = {
-  C_HA_1: { id: 'C_HA_1', topic: 'HA', who: 'HAERIN', depth: 1, text: '회장은 도윤과 윤서진이 만났다는 사실을 이미 알고 있다.' },
+  C_HA_1: { id: 'C_HA_1', topic: 'HA', who: 'HAERIN', depth: 1, text: '회장은 {name:과} 윤서진이 만났다는 사실을 이미 알고 있다.' },
   C_HA_2: { id: 'C_HA_2', topic: 'HA', who: 'HAERIN', depth: 2, text: '보안실장은 이번 점검 결과를 회장에게 직접 보고한다.' },
-  C_HA_3: { id: 'C_HA_3', topic: 'HA', who: 'HAERIN', depth: 3, text: '도윤의 출입 기록이 다른 직원들과 분리되어 보존되고 있다.' },
+  C_HA_3: { id: 'C_HA_3', topic: 'HA', who: 'HAERIN', depth: 3, text: '{name}의 출입 기록이 다른 직원들과 분리되어 보존되고 있다.' },
   C_HB_1: { id: 'C_HB_1', topic: 'HB', who: 'HAERIN', depth: 1, text: '서해린은 자료 전달 목록을 보관하고 있다.' },
   C_HB_2: { id: 'C_HB_2', topic: 'HB', who: 'HAERIN', depth: 2, text: '실제 전달 목록에는 재단 결산 자료 3건이 적혀 있다.' },
   C_HB_3: { id: 'C_HB_3', topic: 'HB', who: 'HAERIN', depth: 3, text: '서해린은 해외 송금 전표의 사본을 전달 목록에서 제외했다.' },
   C_BA_1: { id: 'C_BA_1', topic: 'BA', who: 'TAEGEON', depth: 1, text: '회장은 만남 자체보다 외부에 전달된 문서의 범위를 걱정한다.' },
   C_BA_2: { id: 'C_BA_2', topic: 'BA', who: 'TAEGEON', depth: 2, text: '회장이 가장 신경 쓰는 문서는 특정 해외 송금 전표다.' },
-  C_BA_3: { id: 'C_BA_3', topic: 'BA', who: 'TAEGEON', depth: 3, text: '회장은 도윤이 해당 전표의 중요성을 아직 모른다고 믿는다.' },
-  C_BB_1: { id: 'C_BB_1', topic: 'BB', who: 'TAEGEON', depth: 1, text: '이번 질문에는 사실 확인과 도윤의 반응 확인이 함께 들어 있다.' },
+  C_BA_3: { id: 'C_BA_3', topic: 'BA', who: 'TAEGEON', depth: 3, text: '회장은 {name:이} 해당 전표의 중요성을 아직 모른다고 믿는다.' },
+  C_BB_1: { id: 'C_BB_1', topic: 'BB', who: 'TAEGEON', depth: 1, text: '이번 질문에는 사실 확인과 {name}의 반응 확인이 함께 들어 있다.' },
   C_BB_2: { id: 'C_BB_2', topic: 'BB', who: 'TAEGEON', depth: 2, text: '자료 처리의 승인 절차와 기록을 명확히 하면 회장의 우려를 줄일 수 있다.' },
   C_BB_3: { id: 'C_BB_3', topic: 'BB', who: 'TAEGEON', depth: 3, text: '회장은 보안실장을 가까운 곳에 대기시켜 두었다.' },
   C_CASE_01_END: {
@@ -161,7 +164,7 @@ const TOPICS = {
     teaser: '그가 듣고 싶은 대답의 모양',
     symbol: 'contract',
     clues: ['C_BB_1', 'C_BB_2', 'C_BB_3'],
-    fragment: '차태건의 기억. 오래전, 아직 젊은 도윤이 처음 보고서를 들고 왔던 날. 그는 그때도 내용보다 손을 먼저 보았다.',
+    fragment: '차태건의 기억. 오래전, 아직 젊은 {name:이} 처음 보고서를 들고 왔던 날. 그는 그때도 내용보다 손을 먼저 보았다.',
     plates: {
       A: { label: '목소리', fall: '“너도 좀 쉬어야지.” 같은 다정함.' },
       B: { label: '결재판', fall: '도장이 찍히지 않은 빈칸 하나.' },
@@ -184,33 +187,94 @@ const PROLOGUE = {
   next: 'RETURN',
   skippable: true,
   stage: { loc: 'parking', cast: [] },
+  // 주인공은 아직 자기 이름을 떠올리지 못한 상태라 '나'로만 표기하고, 다른 인물도 직함으로만 부릅니다.
   lines: [
-    { narr: '대규모 승계 작업이 끝난 밤. 마지막 업무로 지정된 장소는 본사 지하 주차장이었다.' },
+    { narr: '대규모 승계 작업이 끝난 밤. 열흘 만에 처음으로 사무실 불을 끄고 나왔다.' },
+    { narr: '자정 무렵, 비서실 번호로 메시지 한 통이 왔다. ‘지하 4층 B-17. 마지막 서류를 수령한 뒤 회장님께 보고 바랍니다.’' },
     { who: 'DOYUN', mono: true, text: '회장님께 보고만 하면 끝나는 일이었다.' },
     { who: 'DOYUN', mono: true, text: '십 년 동안, 나는 단 한 번도 그분의 지시를 의심하지 않았다.' },
-    { narr: '차 보닛 위에 서류 봉투가 놓여 있다. 첫 장에 내 이름과 ‘횡령’이라는 단어가 나란히 찍혀 있다.' },
-    { narr: '기둥 그림자 사이로 구두 소리가 다가온다.', stage: { cast: ['MUJIN'] }, sfx: 'tick' },
-    { who: 'MUJIN', text: '한 실장님. 오늘 이후의 일정은 없습니다.' },
+    { narr: '지하 4층. 천장의 형광등 하나가 깜빡이다 꺼진다. 휴대폰의 신호 표시가 한 칸씩 사라진다.', sfx: 'tick' },
+    { narr: 'B-17 자리에 세워진 검은 세단. 보닛 위에 봉인된 서류 봉투가 놓여 있다.' },
+    { narr: '첫 장은 감사 보고서다. 재단 자금 횡령. 혐의자 칸에는 내 이름이, 승인란에는 내 도장이 찍혀 있다.' },
+    { who: 'DOYUN', mono: true, text: '나는 이 서류에 도장을 찍은 적이 없다.' },
+    { narr: '넘기는 장마다 내 서명이 있다. 출장 기록, 법인 계좌, 해외 송금. 십 년 동안 회장님을 위해 처리한 일들이 전부 내 이름으로 다시 쓰여 있다.' },
+    { narr: '등 뒤에서 구두 소리가 울린다. 서두르지 않는 걸음이다.', stage: { cast: ['MUJIN'] }, sfx: 'tick' },
+    { who: 'MUJIN', text: '실장님. 서류는 확인하셨습니까.' },
+    { who: 'DOYUN', text: '권 실장님, 이게 뭡니까. 회장님께 먼저 보고드려야—' },
+    { who: 'MUJIN', text: '오늘 이후의 일정은 없습니다.' },
+    { narr: '기둥 뒤에서 두 사람이 더 걸어 나온다. 출구 쪽 셔터가 내려가는 소리가 주차장 전체를 길게 긁는다.', sfx: 'danger' },
     { who: 'DOYUN', text: '회장님은… 알고 계십니까?' },
-    { narr: '권무진은 대답하지 않는다. 그 침묵이 대답이었는지, 나는 끝내 알지 못했다.' },
-    { fx: 'blackout', sfx: 'thud', stage: { loc: 'black', cast: [] } },
+    { who: 'MUJIN', text: '그 질문의 답은 실장님이 제일 잘 아시지 않습니까.' },
+    { who: 'MUJIN', text: '이런 밤은 늘 실장님이 정리하셨으니까요.' },
+    { narr: '주머니 속 휴대폰이 짧게 떨린다. 신호가 잠깐 잡힌 모양이다. 화면에 부재중 전화 한 통이 떠 있다. ‘비서실’, 2분 전.' },
+    { narr: '다시 걸 틈은 없었다. 누군가 뒤에서 내 어깨를 붙잡는다. 손에서 빠져나간 휴대폰이 바닥에 부딪혀 화면이 갈라진다.', sfx: 'thud' },
+    { who: 'DOYUN', mono: true, text: '십 년. 나는 지금, 누구를 위해 죽는 걸까.' },
+    { fx: 'blackout', narr: '심장 소리가 느려진다. 그리고, 멈춘다.', sfx: 'heartbeat', stage: { loc: 'black', cast: [] } },
   ],
 };
 
 const RETURN = {
   id: 'RETURN',
   type: 'scene',
-  next: 'HAERIN_OPEN',
+  next: 'NAME_ENTRY',
   skippable: true,
   stage: { loc: 'black', cast: [] },
   lines: [
-    { who: 'TAEGEON_ECHO', text: '이번 일만 끝나면, 너도 좀 쉬어야지.', sfx: 'heartbeat' },
+    { fx: 'blackout', narr: '……숨이 들어온다. 차갑게, 한꺼번에, 너무 많이.', sfx: 'heartbeat' },
+    { who: 'TAEGEON_ECHO', text: '이번 일만 끝나면, 너도 좀 쉬어야지.' },
+    { narr: '눈을 뜬다. 형광등 불빛이 눈을 찌르고, 귓속에서 높은 소리가 멈추지 않는다.', stage: { loc: 'secretary', dizzy: true } },
+    { narr: '손이 먼저 목으로 간다. 아무것도 없다. 상처도, 통증도. 셔츠 깃은 아침에 다린 그대로 빳빳하다.' },
+    { narr: '책상, 모니터, 결재판. 주차장의 콘크리트 냄새와 비서실의 커피 냄새가 한데 섞이며 속이 뒤집힌다.' },
+    { who: 'DOYUN', mono: true, text: '여기는… 어디지. 나는 분명히 그 주차장에서—' },
+    { who: 'HAERIN', text: '실장님?', stage: { cast: ['HAERIN'] } },
+    { who: 'HAERIN', text: '실장님, 제 말 들리세요?' },
+    { who: 'DOYUN', mono: true, text: '실장님. 그건 직함이다. 이름이 아니다.' },
+    { who: 'DOYUN', mono: true, text: '셔터 소리도, 서류의 도장도, 구두 소리도 이렇게 선명한데… 정작 내 이름이 떠오르지 않는다.' },
+    { narr: '책상 위 명패로 손을 뻗는다. 글자가 물에 젖은 것처럼 번져 읽히지 않는다.' },
+    { who: 'DOYUN', mono: true, text: '가장 먼저 붙잡아야 하는 건 이름이다. 내가 누구였는지부터.' },
+  ],
+};
+
+/* 회귀 직후 어지러운 상태에서 자기 이름부터 떠올리는 장면. 이름 입력 화면입니다. */
+const NAME_ENTRY = {
+  id: 'NAME_ENTRY',
+  type: 'name',
+  next: 'AWAKEN',
+  stage: { loc: 'secretary', cast: ['HAERIN'], dizzy: true },
+};
+
+const AWAKEN = {
+  id: 'AWAKEN',
+  type: 'scene',
+  next: 'HAERIN_OPEN',
+  skippable: true,
+  stage: { loc: 'secretary', cast: ['HAERIN'] },
+  lines: [
+    { narr: '번져 있던 명패의 글자가 한 획씩 제자리를 찾는다. 「회장실 실장 {fullname}」.', sfx: 'chime' },
+    { who: 'DOYUN', mono: true, text: '{fullname}. 서른다섯. 태경그룹 회장실 실장.' },
+    { who: 'DOYUN', mono: true, text: '그리고 서른 날 뒤, 지하 주차장에서 죽은 사람.' },
     { card: 'D-30', sub: '죽기 30일 전 아침', sfx: 'chime' },
-    { narr: '형광등이 낮게 웅웅거린다. 비서실 책상. 손끝에 닿는 종이의 감촉.', stage: { loc: 'secretary', cast: ['HAERIN'] } },
-    { who: 'HAERIN', text: '실장님. 안색이 좋지 않네요.' },
+    { narr: '모니터 구석의 날짜, 휴대폰 첫 화면의 일정. ‘09:00 회장님 보고.’ 죽기 한 달 전의 바로 그 아침이다.' },
+    { who: 'HAERIN', text: '{surname} 실장님. 안색이 좋지 않네요.' },
     { who: 'DOYUN', mono: true, text: '서해린. 이 목소리도, 책상 위 문서도… 죽기 한 달 전과 같다.' },
-    { narr: '그녀의 가슴 앞으로 겹겹이 포개진 금속판과 나사가 떠오른다. 봉인처럼 박힌 구조물이다.', stage: { seal: ['HAERIN'] }, sfx: 'chime' },
-    { who: 'DOYUN', mono: true, text: '사람의 속을… 나사처럼 풀어낼 수 있다는 건가.' },
+    { narr: '그런데 하나가 다르다. 그녀의 가슴 앞에 금속판 몇 장이 겹쳐 떠 있고, 나사들이 그 판을 붙들고 있다.', stage: { seal: ['HAERIN'] }, sfx: 'chime' },
+    { who: 'DOYUN', mono: true, text: '눈을 깜빡여도 사라지지 않는다. 헛것이라기엔 나사 머리의 홈까지 너무 정교하다.' },
+    { narr: '시선을 나사 하나에 모은다. 나사가 아주 조금 돌아가고, 그 틈으로 목소리 하나가 새어 나온다.', sfx: 'tick' },
+    { who: 'HAERIN', inner: true, text: '…오늘만 넘기면 돼. 아무 일도 없을 거야.' },
+    { narr: '관자놀이를 쇠꼬챙이로 누르는 듯한 통증. 나사에서 눈을 떼자 목소리가 뚝 끊긴다.', sfx: 'thud' },
+    { who: 'DOYUN', mono: true, text: '사람의 속을 나사처럼 풀어낼 수 있다. 다만 오래 붙들 수는 없다. 한 번에 풀 수 있는 건 몇 개뿐이다.' },
+    { who: 'DOYUN', mono: true, text: '들리는 건 지금 이 사람이 붙들고 있는 기억과 감정뿐이다. 그게 사실인지는 따로 확인해야 한다.' },
+    { who: 'DOYUN', mono: true, text: '그리고 무엇보다, 내가 들여다봤다는 사실을 들켜서는 안 된다.' },
+    { narr: '숨을 고르고 남은 시간을 헤아린다. 서른 날. 무엇을 할 수 있는지보다, 무엇을 하지 않으면 죽는지부터.' },
+    { who: 'DOYUN', mono: true, text: '도망칠 수는 없다. 내 명의로 처리된 거래와 문서가 이미 있다. 잠적하는 순간 나는 진짜 횡령범이 되고, 쫓기는 배신자가 된다.' },
+    { who: 'DOYUN', mono: true, text: '시키는 대로 움직이면, 서른 날 뒤 같은 주차장에서 같은 구두 소리를 듣게 된다.' },
+    { who: 'DOYUN', mono: true, text: '남은 길은 하나다. 나를 죽이는 것보다 살려 두는 편이 이득인 상황을 만드는 것.' },
+    {
+      card: '이번 삶의 목표',
+      list: ['회장의 첫 호출에서 의심받지 않고 살아남는다', '내 이름으로 쌓이고 있는 기록의 실체를 찾는다', '누가, 왜 나를 죽였는지 밝혀낸다'],
+      sub: '타인의 비밀을 알아야 살아남는다. 하지만 안다는 사실을 들키면 죽는다.',
+    },
+    { who: 'DOYUN', mono: true, text: '아홉 시까지 이십 분. 첫 번째 시험은 이미 시작됐다.' },
   ],
 };
 
@@ -340,7 +404,7 @@ const BOSS_01 = {
       reaction: [
         { who: 'TAEGEON', text: '만난 적이 없다.' },
         { narr: '회장이 펜을 내려놓지 않은 채 나를 오래 본다.' },
-        { who: 'TAEGEON', text: '도윤아. 나는 네가 거짓말을 잘 못한다는 점을 좋아했다.' },
+        { who: 'TAEGEON', text: '{name:아}. 나는 네가 거짓말을 잘 못한다는 점을 좋아했다.' },
       ],
     },
     {
@@ -358,7 +422,7 @@ const BOSS_01 = {
       effects: { suspicionDelta: 35 },
       reaction: [
         { narr: '방 안의 공기가 가라앉는다.' },
-        { who: 'TAEGEON', text: '한도윤.' },
+        { who: 'TAEGEON', text: '{fullname}.' },
         { narr: '이름 석 자를 또박또박 부른다. 확인하듯이.' },
         { who: 'TAEGEON', text: '내가 묻는 말에 질문으로 답하는 버릇은 언제 생겼지?' },
       ],
@@ -400,7 +464,7 @@ const BOSS_02 = {
       effects: { suspicionDelta: 40 },
       reaction: [
         { narr: '서해린이 숨을 멈춘다.' },
-        { who: 'TAEGEON', text: '…도윤아.' },
+        { who: 'TAEGEON', text: '…{name:아}.' },
         { narr: '회장이 천천히 웃는다. 웃음이 끝나도 눈은 그대로다.' },
         { who: 'TAEGEON', text: '누가 너한테 그런 말을 넣었지?' },
       ],
@@ -458,7 +522,7 @@ const BOSS_03 = {
         { narr: '펜이 멈춘다.' },
         { who: 'TAEGEON', text: '해외 송금 전표.' },
         { narr: '회장이 그 단어를 처음 듣는 사람처럼 따라 말한다.' },
-        { who: 'TAEGEON', text: '그 이야기를 누구한테 들었나, 도윤아.' },
+        { who: 'TAEGEON', text: '그 이야기를 누구한테 들었나, {name:아}.' },
       ],
     },
     {
@@ -494,6 +558,8 @@ const BOSS_03 = {
 const NODES = {
   PROLOGUE,
   RETURN,
+  NAME_ENTRY,
+  AWAKEN,
   HAERIN_OPEN,
   TUTORIAL: { id: 'TUTORIAL', type: 'tutorial', next: 'OFFICE_ENTER' },
   OFFICE_ENTER,
@@ -507,7 +573,7 @@ const NODES = {
   RESULT: { id: 'RESULT', type: 'result' },
 };
 
-const NODE_ORDER = ['PROLOGUE', 'RETURN', 'HAERIN_OPEN', 'TUTORIAL', 'OFFICE_ENTER', 'MEMORY_HUB', 'PUZZLE', 'REWARD', 'DOCUMENT_ACTION', 'BOSS_01', 'BOSS_02', 'BOSS_03', 'RESULT'];
+const NODE_ORDER = ['PROLOGUE', 'RETURN', 'NAME_ENTRY', 'AWAKEN', 'HAERIN_OPEN', 'TUTORIAL', 'OFFICE_ENTER', 'MEMORY_HUB', 'PUZZLE', 'REWARD', 'DOCUMENT_ACTION', 'BOSS_01', 'BOSS_02', 'BOSS_03', 'RESULT'];
 
 /* 사건 재도전 체크포인트: HAERIN_OPEN 이전 상태 (명세 18.2) */
 const CHECKPOINT_NODE = 'HAERIN_OPEN';
@@ -611,7 +677,7 @@ __define("src/data/config.js", function (__require) {
  * 수치는 테스트 후 조정할 수 있도록 한곳에 모았습니다.
  */
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2; // 2: 주인공 이름(run.player) 추가
 const PROJECT = { title: '언스크류', titleEn: 'UNCREW', copy: '풀수록, 더 깊이 얽힌다.' };
 
 const INITIAL_RUN = {
@@ -901,6 +967,150 @@ function collectRefs(cond, out = { clues: [], evidence: [], flags: [], trust: []
 return { CONDITION_KEYS, evaluate, collectRefs };
 });
 
+/* ===== src/core/names.js ===== */
+__define("src/core/names.js", function (__require) {
+/*
+ * 언스크류(UNCREW) — 주인공 이름 규칙과 한국어 조사 처리
+ *
+ * 이름 규칙은 현재 등장인물 구성(모두 성 1자 + 이름 2자, 회장 일가는 차씨)과
+ * 대사 형태("{이름}아", "{성} 실장님", "{성명}.")가 자연스럽게 읽히도록 정했습니다.
+ *   - 한글 완성형 글자만 (자모 단독·영문·숫자·공백·기호 불가)
+ *   - 성: 1자, 또는 널리 쓰이는 복성 2자(남궁·황보·제갈 등)
+ *   - 이름: 2자 ("민호야", "도윤아"처럼 부를 때 어색하지 않은 길이)
+ *   - 성 '차' 불가: 회장 일가(차태건·차유라·차도혁)와 혈연으로 읽힙니다.
+ *   - 다른 등장인물과 같은 이름(성명 또는 이름 2자) 불가: 대사에서 누구를 부르는지 헷갈립니다.
+ *   - 호칭·직함·대명사로 읽히는 이름, 비속어 불가
+ *
+ * 대본 안의 이름 자리 표시
+ *   {name} 이름 · {surname} 성 · {fullname} 성명
+ *   {name:아} 처럼 조사를 붙이면 받침에 맞춰 바꿉니다. (아/야, 이/가, 은/는, 을/를, 과/와, 으로/로, 이랑/랑, 이에요/예요)
+ */
+
+const DEFAULT_PLAYER = { surname: '한', given: '도윤' };
+
+const COMPOUND_SURNAMES = ['남궁', '황보', '제갈', '선우', '독고', '사공', '서문', '동방'];
+
+const BLOCKED_SURNAMES = { 차: '차씨는 회장 일가의 성이라 혈연으로 읽힙니다. 다른 성을 골라 주세요.' };
+
+/** 다른 등장인물 (명세 4장) */
+const CAST_NAMES = [
+  ['차', '태건'],
+  ['서', '해린'],
+  ['차', '유라'],
+  ['윤', '서진'],
+  ['백', '리아'],
+  ['차', '도혁'],
+  ['권', '무진'],
+];
+
+/** 호칭·직함·대명사로 읽혀 대사가 어색해지는 이름 */
+const RESERVED_GIVEN = ['회장', '실장', '사장', '부장', '과장', '대리', '비서', '보안', '본부', '임원', '직원', '당신', '자네', '우리', '저희', '누구', '아무', '그대', '이름', '주인', '선생', '아빠', '엄마'];
+
+const PROFANITY = ['시발', '씨발', '씨빨', '병신', '븅신', '개새', '새끼', '좆', '존나', '지랄', '미친', '닥쳐', '꺼져', '섹스', '창녀', '걸레', '애미', '애비', '느금'];
+
+const HANGUL_RE = /^[가-힣]+$/;
+
+const NAME_RULE_TEXT = '한글만 · 성 1자(남궁·황보 같은 복성은 2자) · 이름 2자';
+
+/**
+ * 이름 검사. 공백은 앞뒤만 정리하고, 중간 공백은 오류로 봅니다.
+ * @returns {{ ok: boolean, errors: string[], player: {surname, given} }}
+ */
+function validatePlayerName(input) {
+  const surname = String(input?.surname ?? '').trim();
+  const given = String(input?.given ?? '').trim();
+  const errors = [];
+  const player = { surname, given };
+
+  if (!surname) errors.push('성을 입력해 주세요.');
+  else if (!HANGUL_RE.test(surname)) errors.push('성은 완성된 한글만 쓸 수 있습니다.');
+  else if (surname.length > 2) errors.push('성은 1자, 복성은 2자까지입니다.');
+  else if (surname.length === 2 && !COMPOUND_SURNAMES.includes(surname)) errors.push(`2자 성은 복성(${COMPOUND_SURNAMES.slice(0, 5).join('·')} 등)만 쓸 수 있습니다.`);
+  else if (BLOCKED_SURNAMES[surname]) errors.push(BLOCKED_SURNAMES[surname]);
+
+  if (!given) errors.push('이름을 입력해 주세요.');
+  else if (!HANGUL_RE.test(given)) errors.push('이름은 완성된 한글만 쓸 수 있습니다.');
+  else if (given.length !== 2) errors.push('이름은 2자로 입력해 주세요.');
+  else if (CAST_NAMES.some(([, g]) => g === given)) errors.push('다른 등장인물과 같은 이름이라 대사에서 헷갈립니다.');
+  else if (RESERVED_GIVEN.includes(given)) errors.push('호칭이나 직함으로 읽히는 이름은 쓸 수 없습니다.');
+
+  const full = surname + given;
+  if (surname && given && PROFANITY.some((w) => full.includes(w))) errors.push('쓸 수 없는 표현이 들어 있습니다.');
+
+  return { ok: errors.length === 0, errors, player };
+}
+
+/* ------------------------------ 조사 ------------------------------ */
+
+function hasBatchim(word) {
+  const ch = String(word).slice(-1);
+  const code = ch.charCodeAt(0) - 0xac00;
+  if (code < 0 || code > 11171) return false;
+  return code % 28 !== 0;
+}
+
+function hasRieulBatchim(word) {
+  const code = String(word).slice(-1).charCodeAt(0) - 0xac00;
+  return code >= 0 && code <= 11171 && code % 28 === 8;
+}
+
+/** 받침이 있을 때의 형태를 키로 씁니다. */
+const JOSA = {
+  아: ['아', '야'],
+  이: ['이', '가'],
+  은: ['은', '는'],
+  을: ['을', '를'],
+  과: ['과', '와'],
+  으로: ['으로', '로'],
+  이랑: ['이랑', '랑'],
+  이에요: ['이에요', '예요'],
+};
+
+function josa(word, key) {
+  const pair = JOSA[key];
+  if (!pair) throw new Error(`알 수 없는 조사: ${key}`);
+  if (key === '으로' && hasRieulBatchim(word)) return '로';
+  return hasBatchim(word) ? pair[0] : pair[1];
+}
+
+/* ------------------------------ 대본 치환 ------------------------------ */
+
+const TOKEN_RE = /\{(name|surname|fullname)(?::([가-힣]+))?\}/g;
+const ANY_BRACE_RE = /\{[^}]*\}/g;
+
+function playerParts(player) {
+  const p = player || DEFAULT_PLAYER;
+  return { name: p.given, surname: p.surname, fullname: p.surname + p.given };
+}
+
+/** 대본의 이름 자리 표시를 실제 이름으로 바꿉니다. */
+function formatText(text, player) {
+  if (!text || !String(text).includes('{')) return text;
+  const parts = playerParts(player);
+  return String(text).replace(TOKEN_RE, (_m, key, j) => {
+    const word = parts[key];
+    return j ? word + josa(word, j) : word;
+  });
+}
+
+/** 콘텐츠 검증용: 지원하지 않는 자리 표시 목록 */
+function invalidTokens(text) {
+  const bad = [];
+  for (const m of String(text ?? '').match(ANY_BRACE_RE) || []) {
+    const re = /^\{(name|surname|fullname)(?::([가-힣]+))?\}$/;
+    const mm = m.match(re);
+    if (!mm || (mm[2] && !JOSA[mm[2]])) bad.push(m);
+  }
+  return bad;
+}
+
+function hasTokens(text) {
+  return /\{(name|surname|fullname)/.test(String(text ?? ''));
+}
+
+return { DEFAULT_PLAYER, COMPOUND_SURNAMES, BLOCKED_SURNAMES, CAST_NAMES, RESERVED_GIVEN, NAME_RULE_TEXT, validatePlayerName, hasBatchim, JOSA, josa, TOKEN_RE, playerParts, formatText, invalidTokens, hasTokens };
+});
+
 /* ===== src/core/validate.js ===== */
 __define("src/core/validate.js", function (__require) {
 /*
@@ -909,6 +1119,7 @@ __define("src/core/validate.js", function (__require) {
  * 콘텐츠 데이터에 없는 조건이나 결과를 만들어 채우지 않습니다.
  */
 const { collectRefs } = __require("src/core/conditions.js");
+const { invalidTokens, hasTokens } = __require("src/core/names.js");
 
 const isStr = (v) => typeof v === 'string' && v.length > 0;
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -962,7 +1173,7 @@ function validateBoards(boards) {
 }
 
 function validateContent(content) {
-  const { NODES, CLUES, EVIDENCE, TOPICS, DIFFICULTIES, ITEMS, CHARACTERS, ENDINGS, boards } = content;
+  const { NODES, NODE_ORDER, CLUES, EVIDENCE, TOPICS, DIFFICULTIES, ITEMS, CHARACTERS, ENDINGS, SPEAKER_LABEL, boards } = content;
   const errors = [];
   const nodeIds = new Set(Object.keys(NODES));
   const clueIds = new Set(Object.keys(CLUES));
@@ -1018,17 +1229,29 @@ function validateContent(content) {
     (fx.grantEvidence || []).forEach((e) => evidenceIds.has(e) || errors.push(`${where}: 미등록 증거 ${e}`));
     (fx.grantClues || []).forEach((c) => clueIds.has(c) || errors.push(`${where}: 미등록 단서 ${c}`));
   };
-  const checkLines = (lines, where) => {
+  // 이름을 떠올리기 전 장면에는 이름 자리 표시를 쓸 수 없습니다.
+  const nameIdx = NODE_ORDER ? NODE_ORDER.indexOf('NAME_ENTRY') : -1;
+  const checkLines = (lines, where, nodeId) => {
+    const beforeName = nodeId && nameIdx >= 0 && NODE_ORDER.indexOf(nodeId) < nameIdx;
     (lines || []).forEach((ln, i) => {
       if (ln.who && !isStr(ln.text)) errors.push(`${where}[${i}]: 대사 text 누락`);
+      if (ln.who && SPEAKER_LABEL && !SPEAKER_LABEL[ln.who]) errors.push(`${where}[${i}]: 미등록 화자 ${ln.who}`);
       if (!ln.who && !ln.narr && !ln.card && !ln.fx) errors.push(`${where}[${i}]: 빈 줄`);
+      for (const t of [ln.text, ln.narr, ln.sub, ...(ln.list || [])]) {
+        invalidTokens(t).forEach((b) => errors.push(`${where}[${i}]: 지원하지 않는 자리 표시 ${b}`));
+        if (beforeName && hasTokens(t)) errors.push(`${where}[${i}]: 이름을 떠올리기 전 장면에 이름 자리 표시`);
+      }
     });
   };
+  const checkText = (t, where) => invalidTokens(t).forEach((b) => errors.push(`${where}: 지원하지 않는 자리 표시 ${b}`));
+  Object.values(CLUES).forEach((c) => checkText(c.text, `clue ${c.id}`));
+  Object.values(CHARACTERS).forEach((c) => checkText(`${c.name} ${c.note}`, `character ${c.id}`));
+  Object.values(TOPICS).forEach((t) => checkText(t.fragment, `topic ${t.id}`));
 
   for (const [k, n] of Object.entries(NODES)) {
     if (n.id !== k) errors.push(`node ${k}: id 불일치`);
     if (n.next && !nodeIds.has(n.next)) errors.push(`node ${k}: 미등록 다음 노드 ${n.next}`);
-    checkLines(n.lines, `node ${k}.lines`);
+    checkLines(n.lines, `node ${k}.lines`, k);
     if (n.type === 'dialogue') {
       if (!Array.isArray(n.choices) || n.choices.length === 0) errors.push(`node ${k}: 선택지 없음`);
       for (const c of n.choices || []) {
@@ -1321,7 +1544,8 @@ __define("src/core/save.js", function (__require) {
  * - 깨진 저장은 별도 키로 보관하고 새 게임을 안내합니다. 잘못된 수치로 조용히 복원하지 않습니다.
  */
 const { SCHEMA_VERSION, ITEM_IDS } = __require("src/data/config.js");
-const { NODES, CLUES, EVIDENCE, TOPICS, ENDINGS } = __require("src/data/case01.js");
+const { NODES, NODE_ORDER, CLUES, EVIDENCE, TOPICS, ENDINGS } = __require("src/data/case01.js");
+const { validatePlayerName, DEFAULT_PLAYER } = __require("src/core/names.js");
 const { getBoard } = __require("src/data/puzzles.js");
 const { validatePuzzleState } = __require("src/core/puzzleEngine.js");
 
@@ -1355,6 +1579,25 @@ function browserStorage() {
 }
 
 const isInt = (v) => Number.isInteger(v);
+
+/**
+ * 이전 저장 형식을 현재 형식으로 바꿉니다. 바꿀 수 없으면 그대로 돌려주고 검증에서 걸러집니다.
+ * v1 → v2: 주인공 이름(run.player)이 생겼습니다. v1은 이름이 '한도윤'으로 고정되어 있었으므로,
+ * 이름을 떠올리는 장면을 이미 지난 진행에는 기본 이름을 넣습니다.
+ */
+function migrateSaveData(data) {
+  if (!data || typeof data !== 'object') return data;
+  if (data.schemaVersion === 1) {
+    const out = { ...data, schemaVersion: 2 };
+    out.meta = { ...(data.meta || {}), lastPlayer: null };
+    if (data.run && typeof data.run === 'object') {
+      const before = ['PROLOGUE', 'RETURN'].includes(data.run.nodeId);
+      out.run = { ...data.run, schemaVersion: 2, player: before ? null : { ...DEFAULT_PLAYER } };
+    }
+    return out;
+  }
+  return data;
+}
 const inRange = (v, lo, hi) => isInt(v) && v >= lo && v <= hi;
 
 /** 저장 데이터 스키마 검증. 문제 목록을 돌려줍니다. */
@@ -1369,6 +1612,7 @@ function validateSaveData(data) {
     if (!Array.isArray(meta.endingsSeen) || meta.endingsSeen.some((e) => !ENDINGS[e])) errors.push('meta.endingsSeen');
     if (typeof meta.tutorialSeen !== 'boolean') errors.push('meta.tutorialSeen');
     if (!meta.settings || typeof meta.settings !== 'object') errors.push('meta.settings');
+    if (meta.lastPlayer != null && !validatePlayerName(meta.lastPlayer).ok) errors.push('meta.lastPlayer');
   }
   const run = data.run;
   if (run === null || run === undefined) return errors;
@@ -1377,6 +1621,8 @@ function validateSaveData(data) {
   if (typeof run.runId !== 'string' || !run.runId) errors.push('run.runId');
   if (run.caseId !== 'CASE_01') errors.push('run.caseId');
   if (!NODES[run.nodeId]) errors.push('run.nodeId');
+  if (run.player != null && !validatePlayerName(run.player).ok) errors.push('run.player');
+  if (run.player == null && NODE_ORDER.indexOf(run.nodeId) > NODE_ORDER.indexOf('NAME_ENTRY')) errors.push('run.player missing');
   if (!inRange(run.suspicion, 0, 100)) errors.push('run.suspicion');
   if (!run.trust || !inRange(run.trust.HAERIN, 0, 100)) errors.push('run.trust');
   if (!inRange(run.focus, 0, 4)) errors.push('run.focus');
@@ -1446,6 +1692,7 @@ class SaveService {
     } catch {
       return this.quarantine(raw, ['JSON parse error']);
     }
+    data = migrateSaveData(data);
     const errors = validateSaveData(data);
     if (errors.length) return this.quarantine(raw, errors);
     return { status: 'ok', data };
@@ -1515,7 +1762,7 @@ class EventLog {
   }
 }
 
-return { SAVE_KEY, LOG_KEY, CORRUPT_PREFIX, createMemoryStorage, browserStorage, validateSaveData, SaveService, EventLog };
+return { SAVE_KEY, LOG_KEY, CORRUPT_PREFIX, createMemoryStorage, browserStorage, migrateSaveData, validateSaveData, SaveService, EventLog };
 });
 
 /* ===== src/core/game.js ===== */
@@ -1539,6 +1786,7 @@ const { getBoard, TUTORIAL_BOARD } = __require("src/data/puzzles.js");
 const { evaluate } = __require("src/core/conditions.js");
 const PE = __require("src/core/puzzleEngine.js");
 const { SaveService, EventLog } = __require("src/core/save.js");
+const { validatePlayerName, DEFAULT_PLAYER } = __require("src/core/names.js");
 
 const R = {
   BAD_NODE: 'BAD_NODE',
@@ -1558,6 +1806,7 @@ const R = {
   NO_TARGET: 'NO_TARGET',
   TUTORIAL_NO_ITEMS: 'TUTORIAL_NO_ITEMS',
   NOT_CLEARED: 'NOT_CLEARED',
+  BAD_NAME: 'BAD_NAME',
 };
 
 const emptyInventory = () => Object.fromEntries(ITEM_IDS.map((i) => [i, 0]));
@@ -1569,14 +1818,16 @@ function createMeta() {
     endingsSeen: [],
     tutorialSeen: false,
     runsStarted: 0,
+    lastPlayer: null,
     settings: { muted: false, textSpeed: 'normal', debug: false },
   };
 }
 
-function createRun({ runId, nodeId, now }) {
+function createRun({ runId, nodeId, now, player = null }) {
   return {
     schemaVersion: SCHEMA_VERSION,
     runId,
+    player: player ? { surname: player.surname, given: player.given } : null,
     caseId: CASE_ID,
     nodeId,
     daysRemaining: INITIAL_RUN.daysRemaining,
@@ -1709,7 +1960,9 @@ class Game {
   /** 사건 재도전: HAERIN_OPEN 이전 상태로. 도감·엔딩 기록은 유지하고 이번 시도 기록은 모두 초기화합니다. */
   retryCase() {
     const runId = this.makeRunId();
-    this.state.run = createRun({ runId, nodeId: CHECKPOINT_NODE, now: this.now() });
+    // 이름은 사건 재도전에서도 유지합니다. (재도전은 이름을 떠올린 이후 시점부터 시작)
+    const player = this.run?.player || this.meta.lastPlayer || DEFAULT_PLAYER;
+    this.state.run = createRun({ runId, nodeId: CHECKPOINT_NODE, now: this.now(), player });
     this.meta.runsStarted += 1;
     this.log.add('case_start', { runId, caseId: CASE_ID, from: 'retry' });
     this.commit();
@@ -1742,6 +1995,23 @@ class Game {
     run.nodeId = node.next;
     this.commit();
     return { ok: true, nodeId: run.nodeId };
+  }
+
+  /* ----------------------------- 이름 입력 ----------------------------- */
+
+  /** 회귀 직후 이름을 떠올리는 장면. 규칙에 맞는 이름만 받습니다. (core/names.js) */
+  setPlayerName(input) {
+    const run = this.run;
+    if (!run || NODES[run.nodeId].type !== 'name') return { ok: false, reason: R.BAD_NODE };
+    const res = validatePlayerName(input);
+    if (!res.ok) return { ok: false, reason: R.BAD_NAME, errors: res.errors };
+    run.player = { ...res.player };
+    this.meta.lastPlayer = { ...res.player };
+    run.nodeId = NODES[run.nodeId].next;
+    // 이름 자체는 로그에 남기지 않습니다.
+    this.log.add('name_set', { runId: run.runId, length: res.player.surname.length + res.player.given.length, isDefault: res.player.surname === DEFAULT_PLAYER.surname && res.player.given === DEFAULT_PLAYER.given });
+    this.commit();
+    return { ok: true, player: run.player };
   }
 
   /* ----------------------------- DialogueEngine ----------------------------- */
@@ -2726,6 +2996,7 @@ const { nextHint, solve } = __require("src/core/solver.js");
 const { ICON, silhouette, sealOverlay, titleEmblem } = __require("src/ui/art.js");
 const { boardMarkup, toLogical, slotMarkup } = __require("src/ui/board.js");
 const SFX = __require("src/ui/audio.js");
+const { formatText, validatePlayerName, DEFAULT_PLAYER, NAME_RULE_TEXT, josa } = __require("src/core/names.js");
 
 const REDUCED = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 const SPEED = { normal: 26, fast: 10, instant: 0 };
@@ -2748,6 +3019,8 @@ const MOVE_REASON_TEXT = {
 const NODE_LABEL = {
   PROLOGUE: '프롤로그',
   RETURN: '회귀',
+  NAME_ENTRY: '회귀 · 이름',
+  AWAKEN: '회귀 · 능력',
   HAERIN_OPEN: '비서실 · 서해린',
   TUTORIAL: '연습 해체',
   OFFICE_ENTER: '회장실',
@@ -2761,11 +3034,16 @@ const NODE_LABEL = {
   RESULT: '결과',
 };
 
+/** HUD·노트·재도전 메뉴를 아직 보여 주지 않는 도입 장면 */
+const INTRO_NODES = ['PROLOGUE', 'RETURN', 'NAME_ENTRY', 'AWAKEN'];
+
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const unquote = (t) => t.replace(/^[“"]|[”"]$/g, '');
 const fmtDelta = (d) => (d > 0 ? `▲${d}` : d < 0 ? `▼${-d}` : '±0');
 
 function createApp({ root, side, debugEl, shell, game }) {
+  /** 대본의 이름 자리 표시를 현재 주인공 이름으로 바꿉니다. */
+  const T = (text) => formatText(text, game.run?.player);
   const ui = {
     view: 'title',
     overlay: null,
@@ -2786,6 +3064,7 @@ function createApp({ root, side, debugEl, shell, game }) {
     toast: null,
     toastTimer: null,
     busy: false,
+    nameDraft: null,
     guardUntil: 0,
     lastSaveWarned: false,
     autoplay: false,
@@ -2857,6 +3136,7 @@ function createApp({ root, side, debugEl, shell, game }) {
     else {
       const node = NODES[run.nodeId];
       if (node.type === 'scene' || node.type === 'dialogue') html = dialogueScreen();
+      else if (node.type === 'name') html = nameScreen();
       else if (node.type === 'tutorial') html = run.activePuzzle ? puzzleScreen() : tutorialIntro();
       else if (node.type === 'hub') html = hubScreen();
       else if (node.type === 'puzzle') html = puzzleScreen();
@@ -2960,9 +3240,11 @@ function createApp({ root, side, debugEl, shell, game }) {
       })
       .join('');
     let over = '';
-    if (line?.card) over = `<div class="card-overlay"><div><div class="big">${esc(line.card)}</div><div class="sub">${esc(line.sub || '')}</div></div></div>`;
+    if (line?.card && line.list) {
+      over = `<div class="card-overlay goal"><div class="goal-card"><span class="eyebrow">${esc(line.card)}</span><ol>${line.list.map((g) => `<li>${esc(T(g))}</li>`).join('')}</ol></div></div>`;
+    } else if (line?.card) over = `<div class="card-overlay"><div><div class="big">${esc(line.card)}</div><div class="sub">${esc(T(line.sub || ''))}</div></div></div>`;
     if (line?.fx === 'blackout') over = `<div class="blackout-overlay">······</div>`;
-    return `<div class="stage loc-${st.loc}">
+    return `<div class="stage loc-${st.loc} ${st.dizzy ? 'dizzy' : ''}">
       <div class="bg"></div>
       ${st.door ? `<div class="door" aria-label="문 밖의 보안실장 실루엣">${silhouette('MUJIN', { label: '권무진' })}</div>` : ''}
       <div class="cast">${figures}</div>
@@ -2970,15 +3252,22 @@ function createApp({ root, side, debugEl, shell, game }) {
     </div>`;
   }
 
+  function speakerLabel(who) {
+    // 주인공은 이름을 떠올리기 전까지 '나', 그 뒤에는 입력한 이름으로 표시합니다.
+    if (who === 'DOYUN') return game.run?.player ? game.run.player.given : SPEAKER_LABEL.DOYUN;
+    return SPEAKER_LABEL[who] || who;
+  }
+
   function lineParts(line) {
-    if (line.card) return { who: '', cls: 'narr', text: line.sub || line.card };
-    if (line.fx === 'blackout') return { who: '', cls: 'narr', text: line.narr || '……' };
+    if (line.card) return { who: '', cls: 'narr', text: T(line.sub || line.card) };
+    if (line.fx === 'blackout') return { who: '', cls: 'narr', text: T(line.narr || '……') };
     if (line.who) {
+      const label = speakerLabel(line.who);
+      if (line.inner) return { who: `${label} · 속마음`, whoCls: 'inner', cls: 'inner', text: T(line.text) };
       const mono = !!line.mono;
-      const label = SPEAKER_LABEL[line.who] || line.who;
-      return { who: mono ? `${label} · 속마음` : label, whoCls: mono ? 'mono' : '', cls: mono ? 'mono' : 'quote', text: mono ? line.text : `“${line.text}”` };
+      return { who: mono ? `${label} · 속마음` : label, whoCls: mono ? 'mono' : '', cls: mono ? 'mono' : 'quote', text: mono ? T(line.text) : `“${T(line.text)}”` };
     }
-    return { who: '', cls: 'narr', text: line.narr };
+    return { who: '', cls: 'narr', text: T(line.narr) };
   }
 
   function deltaStrip(pr) {
@@ -3011,7 +3300,7 @@ function createApp({ root, side, debugEl, shell, game }) {
     const lineKey = `${seq.key}#${idx}`;
     const fresh = ui.shownLineKey !== lineKey;
     const full = !fresh && !ui.typing;
-    const showHud = !['PROLOGUE', 'RETURN'].includes(run.nodeId) || !!run.pendingReaction;
+    const showHud = !INTRO_NODES.includes(run.nodeId) || !!run.pendingReaction;
     const choicesReady = seq.mode === 'node' && seq.node.type === 'dialogue' && isLast && full && !game.canChoose();
 
     let bottom;
@@ -3123,7 +3412,7 @@ function createApp({ root, side, debugEl, shell, game }) {
         const badges = [];
         if (!v.enabled) badges.push(`<span class="chip">${ICON.lock}${esc(c.lockHint)}</span>`);
         if (v.related) badges.push(`<span class="chip teal">${ICON.notes}관련 단서 보유</span>`);
-        if (v.magnified) badges.push(`<span class="chip danger">${ICON.glass}모순: ${esc(CLUES[v.magnified.clueId].text)}</span>`);
+        if (v.magnified) badges.push(`<span class="chip danger">${ICON.glass}모순: ${esc(T(CLUES[v.magnified.clueId].text))}</span>`);
         if (v.rehearsal) {
           const [t, ic, cls] = dirText[v.rehearsal];
           badges.push(`<span class="chip ${cls}">${ic}리허설: 의심도 ${t}</span>`);
@@ -3161,6 +3450,82 @@ function createApp({ root, side, debugEl, shell, game }) {
     SFX.play('choose');
     if (res.reaction.tone === 'up_big') SFX.duckAmbient();
     if (res.reaction.removed) SFX.play('danger');
+    render();
+  }
+
+  /* =============================== 이름 입력 =============================== */
+
+  function nameDraft() {
+    if (!ui.nameDraft) {
+      const last = game.meta.lastPlayer;
+      ui.nameDraft = last ? { surname: last.surname, given: last.given } : { surname: '', given: '' };
+    }
+    return ui.nameDraft;
+  }
+
+  function nameStatus(d) {
+    const v = validatePlayerName(d);
+    if (!d.surname.trim() && !d.given.trim()) return { ok: false, html: `<span class="muted">성과 이름을 차례로 떠올려 보세요.</span>` };
+    if (!v.ok) return { ok: false, html: `<span class="err">${esc(v.errors[0])}</span>` };
+    const g = v.player.given;
+    return { ok: true, html: `<span class="ok">회장은 ‘${esc(g + josa(g, '아'))}’, 직원들은 ‘${esc(v.player.surname)} 실장님’이라고 부릅니다.</span>` };
+  }
+
+  function nameScreen() {
+    const d = nameDraft();
+    const st = nameStatus(d);
+    const def = DEFAULT_PLAYER.surname + DEFAULT_PLAYER.given;
+    return `<section class="screen name-screen" aria-label="이름 떠올리기">
+      <div class="name-stage">
+        ${stageMarkup(NODES.NAME_ENTRY.stage, null)}
+        <div class="nameplate ${st.ok ? 'clear' : ''}" aria-hidden="true"><small>회장실 실장</small><b data-plate>${st.ok ? esc(d.surname.trim() + d.given.trim()) : '· · ·'}</b></div>
+      </div>
+      <form class="name-form" autocomplete="off" onsubmit="return false">
+        <span class="eyebrow">기억해 내기</span>
+        <h2>내 이름은…</h2>
+        <p class="muted">번진 명패를 붙잡고, 가장 먼저 자기 이름을 떠올립니다.</p>
+        <div class="name-fields">
+          <label><span>성</span><input name="surname" value="${esc(d.surname)}" placeholder="${DEFAULT_PLAYER.surname}" maxlength="3" lang="ko" autocapitalize="off" autocorrect="off" spellcheck="false" aria-describedby="name-rule"></label>
+          <label><span>이름</span><input name="given" value="${esc(d.given)}" placeholder="${DEFAULT_PLAYER.given}" maxlength="3" lang="ko" autocapitalize="off" autocorrect="off" spellcheck="false" aria-describedby="name-rule"></label>
+        </div>
+        <p class="legend" id="name-rule">${esc(NAME_RULE_TEXT)}. 회장 일가의 성(차)과 다른 등장인물의 이름은 쓸 수 없습니다.</p>
+        <div class="name-status" data-name-status role="status" aria-live="polite">${st.html}</div>
+        <div class="name-actions">
+          <button type="button" class="btn" data-act="name-default" aria-label="기본 이름 ${esc(def)}으로 기억한다">${esc(def)} 그대로</button>
+          <button type="button" class="btn primary" data-act="name-submit" ${st.ok ? '' : 'disabled'}>이 이름으로 기억한다</button>
+        </div>
+      </form>
+    </section>`;
+  }
+
+  /** 입력 중에는 화면 전체를 다시 그리지 않아 한글 조합이 끊기지 않게 합니다. */
+  function onNameInput(e) {
+    const form = e.target.closest('.name-form');
+    if (!form) return;
+    const d = nameDraft();
+    d[e.target.name] = e.target.value;
+    const st = nameStatus(d);
+    form.querySelector('[data-name-status]').innerHTML = st.html;
+    form.querySelector('[data-act="name-submit"]').disabled = !st.ok;
+    const plate = root.querySelector('.nameplate');
+    plate.classList.toggle('clear', st.ok);
+    plate.querySelector('[data-plate]').textContent = st.ok ? d.surname.trim() + d.given.trim() : '· · ·';
+  }
+
+  function submitName(input) {
+    const form = root.querySelector('.name-form');
+    const d = input || {
+      surname: form?.querySelector('[name="surname"]').value ?? '',
+      given: form?.querySelector('[name="given"]').value ?? '',
+    };
+    const res = game.setPlayerName(d);
+    if (!res.ok) {
+      if (form) form.querySelector('[data-name-status]').innerHTML = `<span class="err">${esc(res.errors?.[0] || '이 이름은 쓸 수 없습니다.')}</span>`;
+      SFX.play('error');
+      return;
+    }
+    ui.nameDraft = null;
+    SFX.play('chime');
     render();
   }
 
@@ -3539,7 +3904,7 @@ function createApp({ root, side, debugEl, shell, game }) {
     const clueCards = r.clues
       .map((cid) => {
         const c = CLUES[cid];
-        return `<div class="note-item"><div class="meta"><span class="chip teal">${DEPTH_LABEL[c.depth]}</span><span class="chip">기억 단서</span>${r.newClues.includes(cid) ? '' : '<span class="chip dim">이미 확보</span>'}</div>${esc(c.text)}</div>`;
+        return `<div class="note-item"><div class="meta"><span class="chip teal">${DEPTH_LABEL[c.depth]}</span><span class="chip">기억 단서</span>${r.newClues.includes(cid) ? '' : '<span class="chip dim">이미 확보</span>'}</div>${esc(T(c.text))}</div>`;
       })
       .join('');
     return `<section class="screen reward-screen">
@@ -3547,7 +3912,7 @@ function createApp({ root, side, debugEl, shell, game }) {
       <div class="scroll" style="flex:1"><div class="body-col">
         <span class="eyebrow">해체 완료 · ${d.name}</span>
         <h2 class="big-title">${CHARACTERS[t.target].name} · ${esc(t.title)}</h2>
-        <p class="fragment">${esc(t.fragment)}</p>
+        <p class="fragment">${esc(T(t.fragment))}</p>
         <div class="section"><h3>얻은 기억 단서 ${r.clues.length}개</h3>${clueCards}
           <p class="legend">기억 단서는 상대가 겪거나 믿는 내용입니다. 실물 증거와는 다릅니다.</p></div>
         <div class="section"><h3>지급 아이템</h3><div class="note-item">${itemList(r.items)}</div></div>
@@ -3577,7 +3942,7 @@ function createApp({ root, side, debugEl, shell, game }) {
     let clueHtml = '';
     if (res.caseClue) {
       const c = CLUES[res.caseClue.id];
-      clueHtml = `<div class="section"><h3>공통 후속 단서</h3><div class="note-item evidence"><div class="meta"><span class="chip gold">사건 정리</span>${res.caseClue.reconfirmed ? '<span class="chip teal">다시 확인됨</span>' : '<span class="chip gold">새 단서</span>'}</div>${esc(res.caseClue.reconfirmed ? c.reconfirmText : c.text)}</div></div>`;
+      clueHtml = `<div class="section"><h3>공통 후속 단서</h3><div class="note-item evidence"><div class="meta"><span class="chip gold">사건 정리</span>${res.caseClue.reconfirmed ? '<span class="chip teal">다시 확인됨</span>' : '<span class="chip gold">새 단서</span>'}</div>${esc(T(res.caseClue.reconfirmed ? c.reconfirmText : c.text))}</div></div>`;
     }
     const msg = end.message ? `<div class="msg-bubble"><small>${CHARACTERS[end.message.from].name} · 문자 메시지</small>${esc(end.message.text)}</div>` : '';
     const leftItems = Object.entries(run.inventory).filter(([, n]) => n > 0);
@@ -3625,8 +3990,8 @@ function createApp({ root, side, debugEl, shell, game }) {
             const c = CLUES[cid];
             const st = game.clueStatus(cid);
             const depth = `<span class="chip teal">${DEPTH_LABEL[c.depth]}</span>`;
-            if (st === 'owned') return `<div class="note-item"><div class="meta">${depth}<span class="chip">이번 시도 확보</span></div>${esc(c.text)}</div>`;
-            if (st === 'past') return `<div class="note-item past"><div class="meta">${depth}<span class="chip dim">지난 시도에서 열람 · 이번 시도 미확보</span></div>${esc(c.text)}</div>`;
+            if (st === 'owned') return `<div class="note-item"><div class="meta">${depth}<span class="chip">이번 시도 확보</span></div>${esc(T(c.text))}</div>`;
+            if (st === 'past') return `<div class="note-item past"><div class="meta">${depth}<span class="chip dim">지난 시도에서 열람 · 이번 시도 미확보</span></div>${esc(T(c.text))}</div>`;
             return `<div class="note-item unknown">${DEPTH_LABEL[c.depth]} · 아직 보지 못한 기억</div>`;
           })
           .join('');
@@ -3638,7 +4003,7 @@ function createApp({ root, side, debugEl, shell, game }) {
       const endHtml =
         end === 'unknown'
           ? ''
-          : `<div class="note-group"><h4>사건 정리</h4><div class="note-item ${end === 'past' ? 'past' : ''}"><div class="meta"><span class="chip gold">공통 후속 단서</span>${end === 'past' ? '<span class="chip dim">지난 시도에서 열람 · 이번 시도 미확보</span>' : ''}</div>${esc(CLUES.C_CASE_01_END.text)}</div></div>`;
+          : `<div class="note-group"><h4>사건 정리</h4><div class="note-item ${end === 'past' ? 'past' : ''}"><div class="meta"><span class="chip gold">공통 후속 단서</span>${end === 'past' ? '<span class="chip dim">지난 시도에서 열람 · 이번 시도 미확보</span>' : ''}</div>${esc(T(CLUES.C_CASE_01_END.text))}</div></div>`;
       sections.push(`<p class="legend">기억 단서는 독심으로 읽은 내용입니다. 상대가 믿는 것이지, 객관적 사실이나 실물 증거는 아닙니다.</p>${groups}${endHtml}`);
     }
     if (all || tab === 'evidence') {
@@ -3652,10 +4017,10 @@ function createApp({ root, side, debugEl, shell, game }) {
       sections.push(`<div class="note-group"><h4>확보 증거</h4>${items}<p class="legend">확보 증거는 실제 문서입니다. 상대 앞에 내밀 수 있는 것은 실물뿐입니다.</p></div>`);
     }
     if (all || tab === 'people') {
-      const ppl = ['HAERIN', 'TAEGEON', 'MUJIN', 'SEOJIN']
+      const ppl = [...(run?.player ? ['DOYUN'] : []), 'HAERIN', 'TAEGEON', 'MUJIN', 'SEOJIN']
         .map((id) => {
           const c = CHARACTERS[id];
-          return `<div class="note-item"><div class="meta"><b>${c.name}</b><span class="chip">${c.age}세 · ${esc(c.role)}</span>${id === 'HAERIN' && run ? `<span class="chip gold">${ICON.heart}신뢰 ${run.trust.HAERIN}</span>` : ''}</div><div class="muted" style="font-size:13px">${esc(c.note)}</div></div>`;
+          return `<div class="note-item"><div class="meta"><b>${esc(T(c.name))}${id === 'DOYUN' ? ' (나)' : ''}</b><span class="chip">${c.age}세 · ${esc(c.role)}</span>${id === 'HAERIN' && run ? `<span class="chip gold">${ICON.heart}신뢰 ${run.trust.HAERIN}</span>` : ''}</div><div class="muted" style="font-size:13px">${esc(T(c.note))}</div></div>`;
         })
         .join('');
       sections.push(`<div class="note-group"><h4>인물</h4>${ppl}</div>`);
@@ -3680,7 +4045,7 @@ function createApp({ root, side, debugEl, shell, game }) {
 
   function renderSide() {
     const run = game.run;
-    const show = ui.view === 'game' && run && !['PROLOGUE', 'RETURN'].includes(run.nodeId);
+    const show = ui.view === 'game' && run && !INTRO_NODES.includes(run.nodeId);
     shell.classList.toggle('with-side', !!show);
     if (show) side.innerHTML = `<h2 class="side-title">노트</h2><p class="legend" style="margin:0 0 10px">읽기 전용 · 진행 상태를 바꾸지 않습니다.</p>${notesContent(null, { all: true })}`;
     else side.innerHTML = '';
@@ -3696,7 +4061,7 @@ function createApp({ root, side, debugEl, shell, game }) {
         <div class="menu-list">
           ${inGame ? `<button class="btn" data-act="notes">${ICON.notes}노트</button>` : ''}
           <button class="btn" data-act="settings">설정</button>
-          ${inGame && !['PROLOGUE', 'RETURN'].includes(game.run.nodeId) ? `<button class="btn" data-act="retry-case">${ICON.restart}사건 처음부터 다시</button>` : ''}
+          ${inGame && !INTRO_NODES.includes(game.run.nodeId) ? `<button class="btn" data-act="retry-case">${ICON.restart}사건 처음부터 다시</button>` : ''}
           ${inGame ? `<button class="btn" data-act="to-title">타이틀로 나가기</button>` : ''}
           <p class="legend">진행은 자동 저장됩니다. 타이틀에서 이어하기로 돌아올 수 있습니다.</p>
         </div>
@@ -3819,9 +4184,12 @@ function createApp({ root, side, debugEl, shell, game }) {
   /* =============================== 입력 처리 =============================== */
 
   const ACTIONS = {
+    'name-submit': () => submitName(),
+    'name-default': () => submitName({ ...DEFAULT_PLAYER }),
     'new-game': () => {
       const start = () => {
         game.newGame();
+        ui.nameDraft = null;
         ui.view = 'game';
         ui.overlay = null;
         ui.seqKey = null;
@@ -4079,7 +4447,7 @@ function createApp({ root, side, debugEl, shell, game }) {
   };
 
   // 화면이 바뀌는 동작 직후의 연타가 새 화면의 다른 버튼을 누르지 않도록 잠시 막습니다.
-  const SCREEN_CHANGING = new Set(['new-game', 'continue', 'choose', 'start-topic', 'close-reward', 'confirm-yes', 'tutorial-start', 'tutorial-done', 'tutorial-skip', 'retry-case-now', 'to-title', 'next']);
+  const SCREEN_CHANGING = new Set(['name-submit', 'name-default', 'new-game', 'continue', 'choose', 'start-topic', 'close-reward', 'confirm-yes', 'tutorial-start', 'tutorial-done', 'tutorial-skip', 'retry-case-now', 'to-title', 'next']);
   root.addEventListener('click', (e) => {
     SFX.unlockAudio();
     const el = e.target.closest('[data-act]');
@@ -4095,7 +4463,16 @@ function createApp({ root, side, debugEl, shell, game }) {
     if (SCREEN_CHANGING.has(act) && before !== after) ui.guardUntil = performance.now() + 320;
   });
 
+  root.addEventListener('input', onNameInput);
+
   document.addEventListener('keydown', (e) => {
+    if (e.target?.closest?.('input, textarea')) {
+      if (e.key === 'Enter' && e.target.closest('.name-form')) {
+        e.preventDefault();
+        submitName();
+      }
+      return; // 입력 칸에서는 단축키를 쓰지 않습니다.
+    }
     if (e.key === '`') {
       game.updateSettings({ debug: !game.meta.settings.debug });
       render();

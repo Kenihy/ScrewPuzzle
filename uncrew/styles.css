@@ -304,6 +304,77 @@ h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.02em; }
 .blackout-overlay { position: absolute; inset: 0; background: #000; animation: fadein 1.2s ease; display: grid; place-items: center; color: #555; font-size: 22px; letter-spacing: .4em; }
 @keyframes fadein { from { opacity: 0; } }
 
+/* 회귀 직후의 어지러움 */
+.stage.dizzy .bg, .stage.dizzy .cast { filter: blur(3px) saturate(.55) brightness(.85); animation: sway 3.4s ease-in-out infinite; }
+@keyframes sway {
+  0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1.02); }
+  25% { transform: translate(-7px, 3px) rotate(-.7deg) scale(1.03); }
+  60% { transform: translate(6px, -2px) rotate(.6deg) scale(1.02); }
+}
+
+/* 목표 카드 */
+.card-overlay.goal { background: radial-gradient(60% 50% at 50% 50%, rgb(18 17 20 / .92), rgb(18 17 20 / .7)); }
+.goal-card {
+  width: min(86%, 380px);
+  text-align: left;
+  border: 1px solid #6b5b3b;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #241d14, #17130e);
+  padding: 18px 18px 14px;
+  box-shadow: 0 20px 50px rgb(0 0 0 / .5);
+}
+.goal-card ol { margin: 10px 0 0; padding-left: 22px; display: grid; gap: 10px; font-family: var(--f-title); font-size: 16.5px; color: var(--gold-strong); word-break: keep-all; }
+.goal-card li::marker { color: var(--gold); font-weight: 700; }
+
+/* 능력으로 들은 다른 인물의 속마음 */
+.textbox .who.inner { color: var(--teal-2); }
+.textbox .text.inner { font-family: var(--f-title); color: var(--teal-2); font-style: italic; }
+
+/* 이름 떠올리기 */
+.name-screen { background: var(--bg); }
+.name-stage { position: relative; flex: 1; min-height: 150px; display: flex; flex-direction: column; }
+.nameplate {
+  position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%);
+  min-width: 190px; padding: 8px 22px 10px; text-align: center;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #3a3036, #1c171a);
+  border: 1px solid #6b5b3b;
+  box-shadow: 0 10px 30px rgb(0 0 0 / .6), inset 0 1px 0 rgb(255 255 255 / .08);
+  filter: blur(2.5px);
+  transition: filter .6s ease;
+}
+.nameplate small { display: block; font-size: 11px; letter-spacing: .25em; color: var(--muted); }
+.nameplate b { display: block; font-family: var(--f-title); font-size: 24px; letter-spacing: .2em; color: var(--gold-strong); min-height: 34px; }
+.nameplate.clear { filter: none; }
+.name-form {
+  flex: none;
+  display: grid; gap: 8px;
+  padding: 14px var(--gutter) max(16px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line-soft);
+  background: var(--bg-2);
+}
+.name-form h2 { font-family: var(--f-title); font-size: 22px; }
+.name-form p { margin: 0; font-size: 14px; word-break: keep-all; }
+.name-fields { display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; }
+.name-fields label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+.name-fields input {
+  min-height: 50px; width: 100%;
+  border-radius: 12px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--text);
+  padding: 0 14px;
+  font: 600 18px/1 var(--f-ui); letter-spacing: .08em;
+}
+.name-fields input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 2px rgb(216 192 143 / .25); }
+.name-fields input::placeholder { color: var(--faint); font-weight: 500; }
+.name-status { min-height: 22px; font-size: 13.5px; word-break: keep-all; }
+.name-status .err { color: #ffc2c7; }
+.name-status .ok { color: var(--teal-2); }
+.name-actions { display: grid; grid-template-columns: 1fr 1.3fr; gap: 8px; margin-top: 2px; }
+@media (max-height: 640px) {
+  .name-form h2 { font-size: 19px; }
+  .name-form > p.muted { display: none; }
+}
+
 .delta-strip {
   position: absolute; left: var(--gutter); right: var(--gutter); top: 10px; z-index: 2;
   display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;

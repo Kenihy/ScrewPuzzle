@@ -4,6 +4,7 @@
  * 콘텐츠 데이터에 없는 조건이나 결과를 만들어 채우지 않습니다.
  */
 import { collectRefs } from './conditions.js';
+import { invalidTokens, hasTokens } from './names.js';
 
 const isStr = (v) => typeof v === 'string' && v.length > 0;
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -57,7 +58,7 @@ export function validateBoards(boards) {
 }
 
 export function validateContent(content) {
-  const { NODES, CLUES, EVIDENCE, TOPICS, DIFFICULTIES, ITEMS, CHARACTERS, ENDINGS, boards } = content;
+  const { NODES, NODE_ORDER, CLUES, EVIDENCE, TOPICS, DIFFICULTIES, ITEMS, CHARACTERS, ENDINGS, SPEAKER_LABEL, boards } = content;
   const errors = [];
   const nodeIds = new Set(Object.keys(NODES));
   const clueIds = new Set(Object.keys(CLUES));
@@ -113,17 +114,29 @@ export function validateContent(content) {
     (fx.grantEvidence || []).forEach((e) => evidenceIds.has(e) || errors.push(`${where}: 미등록 증거 ${e}`));
     (fx.grantClues || []).forEach((c) => clueIds.has(c) || errors.push(`${where}: 미등록 단서 ${c}`));
   };
-  const checkLines = (lines, where) => {
+  // 이름을 떠올리기 전 장면에는 이름 자리 표시를 쓸 수 없습니다.
+  const nameIdx = NODE_ORDER ? NODE_ORDER.indexOf('NAME_ENTRY') : -1;
+  const checkLines = (lines, where, nodeId) => {
+    const beforeName = nodeId && nameIdx >= 0 && NODE_ORDER.indexOf(nodeId) < nameIdx;
     (lines || []).forEach((ln, i) => {
       if (ln.who && !isStr(ln.text)) errors.push(`${where}[${i}]: 대사 text 누락`);
+      if (ln.who && SPEAKER_LABEL && !SPEAKER_LABEL[ln.who]) errors.push(`${where}[${i}]: 미등록 화자 ${ln.who}`);
       if (!ln.who && !ln.narr && !ln.card && !ln.fx) errors.push(`${where}[${i}]: 빈 줄`);
+      for (const t of [ln.text, ln.narr, ln.sub, ...(ln.list || [])]) {
+        invalidTokens(t).forEach((b) => errors.push(`${where}[${i}]: 지원하지 않는 자리 표시 ${b}`));
+        if (beforeName && hasTokens(t)) errors.push(`${where}[${i}]: 이름을 떠올리기 전 장면에 이름 자리 표시`);
+      }
     });
   };
+  const checkText = (t, where) => invalidTokens(t).forEach((b) => errors.push(`${where}: 지원하지 않는 자리 표시 ${b}`));
+  Object.values(CLUES).forEach((c) => checkText(c.text, `clue ${c.id}`));
+  Object.values(CHARACTERS).forEach((c) => checkText(`${c.name} ${c.note}`, `character ${c.id}`));
+  Object.values(TOPICS).forEach((t) => checkText(t.fragment, `topic ${t.id}`));
 
   for (const [k, n] of Object.entries(NODES)) {
     if (n.id !== k) errors.push(`node ${k}: id 불일치`);
     if (n.next && !nodeIds.has(n.next)) errors.push(`node ${k}: 미등록 다음 노드 ${n.next}`);
-    checkLines(n.lines, `node ${k}.lines`);
+    checkLines(n.lines, `node ${k}.lines`, k);
     if (n.type === 'dialogue') {
       if (!Array.isArray(n.choices) || n.choices.length === 0) errors.push(`node ${k}: 선택지 없음`);
       for (const c of n.choices || []) {

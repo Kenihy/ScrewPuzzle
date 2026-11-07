@@ -13,6 +13,7 @@ import { nextHint, solve } from '../core/solver.js';
 import { ICON, silhouette, sealOverlay, titleEmblem } from './art.js';
 import { boardMarkup, toLogical, slotMarkup } from './board.js';
 import * as SFX from './audio.js';
+import { formatText, validatePlayerName, DEFAULT_PLAYER, NAME_RULE_TEXT, josa } from '../core/names.js';
 
 const REDUCED = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 const SPEED = { normal: 26, fast: 10, instant: 0 };
@@ -35,6 +36,8 @@ const MOVE_REASON_TEXT = {
 const NODE_LABEL = {
   PROLOGUE: '프롤로그',
   RETURN: '회귀',
+  NAME_ENTRY: '회귀 · 이름',
+  AWAKEN: '회귀 · 능력',
   HAERIN_OPEN: '비서실 · 서해린',
   TUTORIAL: '연습 해체',
   OFFICE_ENTER: '회장실',
@@ -48,11 +51,16 @@ const NODE_LABEL = {
   RESULT: '결과',
 };
 
+/** HUD·노트·재도전 메뉴를 아직 보여 주지 않는 도입 장면 */
+const INTRO_NODES = ['PROLOGUE', 'RETURN', 'NAME_ENTRY', 'AWAKEN'];
+
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const unquote = (t) => t.replace(/^[“"]|[”"]$/g, '');
 const fmtDelta = (d) => (d > 0 ? `▲${d}` : d < 0 ? `▼${-d}` : '±0');
 
 export function createApp({ root, side, debugEl, shell, game }) {
+  /** 대본의 이름 자리 표시를 현재 주인공 이름으로 바꿉니다. */
+  const T = (text) => formatText(text, game.run?.player);
   const ui = {
     view: 'title',
     overlay: null,
@@ -73,6 +81,7 @@ export function createApp({ root, side, debugEl, shell, game }) {
     toast: null,
     toastTimer: null,
     busy: false,
+    nameDraft: null,
     guardUntil: 0,
     lastSaveWarned: false,
     autoplay: false,
@@ -144,6 +153,7 @@ export function createApp({ root, side, debugEl, shell, game }) {
     else {
       const node = NODES[run.nodeId];
       if (node.type === 'scene' || node.type === 'dialogue') html = dialogueScreen();
+      else if (node.type === 'name') html = nameScreen();
       else if (node.type === 'tutorial') html = run.activePuzzle ? puzzleScreen() : tutorialIntro();
       else if (node.type === 'hub') html = hubScreen();
       else if (node.type === 'puzzle') html = puzzleScreen();
@@ -247,9 +257,11 @@ export function createApp({ root, side, debugEl, shell, game }) {
       })
       .join('');
     let over = '';
-    if (line?.card) over = `<div class="card-overlay"><div><div class="big">${esc(line.card)}</div><div class="sub">${esc(line.sub || '')}</div></div></div>`;
+    if (line?.card && line.list) {
+      over = `<div class="card-overlay goal"><div class="goal-card"><span class="eyebrow">${esc(line.card)}</span><ol>${line.list.map((g) => `<li>${esc(T(g))}</li>`).join('')}</ol></div></div>`;
+    } else if (line?.card) over = `<div class="card-overlay"><div><div class="big">${esc(line.card)}</div><div class="sub">${esc(T(line.sub || ''))}</div></div></div>`;
     if (line?.fx === 'blackout') over = `<div class="blackout-overlay">······</div>`;
-    return `<div class="stage loc-${st.loc}">
+    return `<div class="stage loc-${st.loc} ${st.dizzy ? 'dizzy' : ''}">
       <div class="bg"></div>
       ${st.door ? `<div class="door" aria-label="문 밖의 보안실장 실루엣">${silhouette('MUJIN', { label: '권무진' })}</div>` : ''}
       <div class="cast">${figures}</div>
@@ -257,15 +269,22 @@ export function createApp({ root, side, debugEl, shell, game }) {
     </div>`;
   }
 
+  function speakerLabel(who) {
+    // 주인공은 이름을 떠올리기 전까지 '나', 그 뒤에는 입력한 이름으로 표시합니다.
+    if (who === 'DOYUN') return game.run?.player ? game.run.player.given : SPEAKER_LABEL.DOYUN;
+    return SPEAKER_LABEL[who] || who;
+  }
+
   function lineParts(line) {
-    if (line.card) return { who: '', cls: 'narr', text: line.sub || line.card };
-    if (line.fx === 'blackout') return { who: '', cls: 'narr', text: line.narr || '……' };
+    if (line.card) return { who: '', cls: 'narr', text: T(line.sub || line.card) };
+    if (line.fx === 'blackout') return { who: '', cls: 'narr', text: T(line.narr || '……') };
     if (line.who) {
+      const label = speakerLabel(line.who);
+      if (line.inner) return { who: `${label} · 속마음`, whoCls: 'inner', cls: 'inner', text: T(line.text) };
       const mono = !!line.mono;
-      const label = SPEAKER_LABEL[line.who] || line.who;
-      return { who: mono ? `${label} · 속마음` : label, whoCls: mono ? 'mono' : '', cls: mono ? 'mono' : 'quote', text: mono ? line.text : `“${line.text}”` };
+      return { who: mono ? `${label} · 속마음` : label, whoCls: mono ? 'mono' : '', cls: mono ? 'mono' : 'quote', text: mono ? T(line.text) : `“${T(line.text)}”` };
     }
-    return { who: '', cls: 'narr', text: line.narr };
+    return { who: '', cls: 'narr', text: T(line.narr) };
   }
 
   function deltaStrip(pr) {
@@ -298,7 +317,7 @@ export function createApp({ root, side, debugEl, shell, game }) {
     const lineKey = `${seq.key}#${idx}`;
     const fresh = ui.shownLineKey !== lineKey;
     const full = !fresh && !ui.typing;
-    const showHud = !['PROLOGUE', 'RETURN'].includes(run.nodeId) || !!run.pendingReaction;
+    const showHud = !INTRO_NODES.includes(run.nodeId) || !!run.pendingReaction;
     const choicesReady = seq.mode === 'node' && seq.node.type === 'dialogue' && isLast && full && !game.canChoose();
 
     let bottom;
@@ -410,7 +429,7 @@ export function createApp({ root, side, debugEl, shell, game }) {
         const badges = [];
         if (!v.enabled) badges.push(`<span class="chip">${ICON.lock}${esc(c.lockHint)}</span>`);
         if (v.related) badges.push(`<span class="chip teal">${ICON.notes}관련 단서 보유</span>`);
-        if (v.magnified) badges.push(`<span class="chip danger">${ICON.glass}모순: ${esc(CLUES[v.magnified.clueId].text)}</span>`);
+        if (v.magnified) badges.push(`<span class="chip danger">${ICON.glass}모순: ${esc(T(CLUES[v.magnified.clueId].text))}</span>`);
         if (v.rehearsal) {
           const [t, ic, cls] = dirText[v.rehearsal];
           badges.push(`<span class="chip ${cls}">${ic}리허설: 의심도 ${t}</span>`);
@@ -448,6 +467,82 @@ export function createApp({ root, side, debugEl, shell, game }) {
     SFX.play('choose');
     if (res.reaction.tone === 'up_big') SFX.duckAmbient();
     if (res.reaction.removed) SFX.play('danger');
+    render();
+  }
+
+  /* =============================== 이름 입력 =============================== */
+
+  function nameDraft() {
+    if (!ui.nameDraft) {
+      const last = game.meta.lastPlayer;
+      ui.nameDraft = last ? { surname: last.surname, given: last.given } : { surname: '', given: '' };
+    }
+    return ui.nameDraft;
+  }
+
+  function nameStatus(d) {
+    const v = validatePlayerName(d);
+    if (!d.surname.trim() && !d.given.trim()) return { ok: false, html: `<span class="muted">성과 이름을 차례로 떠올려 보세요.</span>` };
+    if (!v.ok) return { ok: false, html: `<span class="err">${esc(v.errors[0])}</span>` };
+    const g = v.player.given;
+    return { ok: true, html: `<span class="ok">회장은 ‘${esc(g + josa(g, '아'))}’, 직원들은 ‘${esc(v.player.surname)} 실장님’이라고 부릅니다.</span>` };
+  }
+
+  function nameScreen() {
+    const d = nameDraft();
+    const st = nameStatus(d);
+    const def = DEFAULT_PLAYER.surname + DEFAULT_PLAYER.given;
+    return `<section class="screen name-screen" aria-label="이름 떠올리기">
+      <div class="name-stage">
+        ${stageMarkup(NODES.NAME_ENTRY.stage, null)}
+        <div class="nameplate ${st.ok ? 'clear' : ''}" aria-hidden="true"><small>회장실 실장</small><b data-plate>${st.ok ? esc(d.surname.trim() + d.given.trim()) : '· · ·'}</b></div>
+      </div>
+      <form class="name-form" autocomplete="off" onsubmit="return false">
+        <span class="eyebrow">기억해 내기</span>
+        <h2>내 이름은…</h2>
+        <p class="muted">번진 명패를 붙잡고, 가장 먼저 자기 이름을 떠올립니다.</p>
+        <div class="name-fields">
+          <label><span>성</span><input name="surname" value="${esc(d.surname)}" placeholder="${DEFAULT_PLAYER.surname}" maxlength="3" lang="ko" autocapitalize="off" autocorrect="off" spellcheck="false" aria-describedby="name-rule"></label>
+          <label><span>이름</span><input name="given" value="${esc(d.given)}" placeholder="${DEFAULT_PLAYER.given}" maxlength="3" lang="ko" autocapitalize="off" autocorrect="off" spellcheck="false" aria-describedby="name-rule"></label>
+        </div>
+        <p class="legend" id="name-rule">${esc(NAME_RULE_TEXT)}. 회장 일가의 성(차)과 다른 등장인물의 이름은 쓸 수 없습니다.</p>
+        <div class="name-status" data-name-status role="status" aria-live="polite">${st.html}</div>
+        <div class="name-actions">
+          <button type="button" class="btn" data-act="name-default" aria-label="기본 이름 ${esc(def)}으로 기억한다">${esc(def)} 그대로</button>
+          <button type="button" class="btn primary" data-act="name-submit" ${st.ok ? '' : 'disabled'}>이 이름으로 기억한다</button>
+        </div>
+      </form>
+    </section>`;
+  }
+
+  /** 입력 중에는 화면 전체를 다시 그리지 않아 한글 조합이 끊기지 않게 합니다. */
+  function onNameInput(e) {
+    const form = e.target.closest('.name-form');
+    if (!form) return;
+    const d = nameDraft();
+    d[e.target.name] = e.target.value;
+    const st = nameStatus(d);
+    form.querySelector('[data-name-status]').innerHTML = st.html;
+    form.querySelector('[data-act="name-submit"]').disabled = !st.ok;
+    const plate = root.querySelector('.nameplate');
+    plate.classList.toggle('clear', st.ok);
+    plate.querySelector('[data-plate]').textContent = st.ok ? d.surname.trim() + d.given.trim() : '· · ·';
+  }
+
+  function submitName(input) {
+    const form = root.querySelector('.name-form');
+    const d = input || {
+      surname: form?.querySelector('[name="surname"]').value ?? '',
+      given: form?.querySelector('[name="given"]').value ?? '',
+    };
+    const res = game.setPlayerName(d);
+    if (!res.ok) {
+      if (form) form.querySelector('[data-name-status]').innerHTML = `<span class="err">${esc(res.errors?.[0] || '이 이름은 쓸 수 없습니다.')}</span>`;
+      SFX.play('error');
+      return;
+    }
+    ui.nameDraft = null;
+    SFX.play('chime');
     render();
   }
 
@@ -826,7 +921,7 @@ export function createApp({ root, side, debugEl, shell, game }) {
     const clueCards = r.clues
       .map((cid) => {
         const c = CLUES[cid];
-        return `<div class="note-item"><div class="meta"><span class="chip teal">${DEPTH_LABEL[c.depth]}</span><span class="chip">기억 단서</span>${r.newClues.includes(cid) ? '' : '<span class="chip dim">이미 확보</span>'}</div>${esc(c.text)}</div>`;
+        return `<div class="note-item"><div class="meta"><span class="chip teal">${DEPTH_LABEL[c.depth]}</span><span class="chip">기억 단서</span>${r.newClues.includes(cid) ? '' : '<span class="chip dim">이미 확보</span>'}</div>${esc(T(c.text))}</div>`;
       })
       .join('');
     return `<section class="screen reward-screen">
@@ -834,7 +929,7 @@ export function createApp({ root, side, debugEl, shell, game }) {
       <div class="scroll" style="flex:1"><div class="body-col">
         <span class="eyebrow">해체 완료 · ${d.name}</span>
         <h2 class="big-title">${CHARACTERS[t.target].name} · ${esc(t.title)}</h2>
-        <p class="fragment">${esc(t.fragment)}</p>
+        <p class="fragment">${esc(T(t.fragment))}</p>
         <div class="section"><h3>얻은 기억 단서 ${r.clues.length}개</h3>${clueCards}
           <p class="legend">기억 단서는 상대가 겪거나 믿는 내용입니다. 실물 증거와는 다릅니다.</p></div>
         <div class="section"><h3>지급 아이템</h3><div class="note-item">${itemList(r.items)}</div></div>
@@ -864,7 +959,7 @@ export function createApp({ root, side, debugEl, shell, game }) {
     let clueHtml = '';
     if (res.caseClue) {
       const c = CLUES[res.caseClue.id];
-      clueHtml = `<div class="section"><h3>공통 후속 단서</h3><div class="note-item evidence"><div class="meta"><span class="chip gold">사건 정리</span>${res.caseClue.reconfirmed ? '<span class="chip teal">다시 확인됨</span>' : '<span class="chip gold">새 단서</span>'}</div>${esc(res.caseClue.reconfirmed ? c.reconfirmText : c.text)}</div></div>`;
+      clueHtml = `<div class="section"><h3>공통 후속 단서</h3><div class="note-item evidence"><div class="meta"><span class="chip gold">사건 정리</span>${res.caseClue.reconfirmed ? '<span class="chip teal">다시 확인됨</span>' : '<span class="chip gold">새 단서</span>'}</div>${esc(T(res.caseClue.reconfirmed ? c.reconfirmText : c.text))}</div></div>`;
     }
     const msg = end.message ? `<div class="msg-bubble"><small>${CHARACTERS[end.message.from].name} · 문자 메시지</small>${esc(end.message.text)}</div>` : '';
     const leftItems = Object.entries(run.inventory).filter(([, n]) => n > 0);
@@ -912,8 +1007,8 @@ export function createApp({ root, side, debugEl, shell, game }) {
             const c = CLUES[cid];
             const st = game.clueStatus(cid);
             const depth = `<span class="chip teal">${DEPTH_LABEL[c.depth]}</span>`;
-            if (st === 'owned') return `<div class="note-item"><div class="meta">${depth}<span class="chip">이번 시도 확보</span></div>${esc(c.text)}</div>`;
-            if (st === 'past') return `<div class="note-item past"><div class="meta">${depth}<span class="chip dim">지난 시도에서 열람 · 이번 시도 미확보</span></div>${esc(c.text)}</div>`;
+            if (st === 'owned') return `<div class="note-item"><div class="meta">${depth}<span class="chip">이번 시도 확보</span></div>${esc(T(c.text))}</div>`;
+            if (st === 'past') return `<div class="note-item past"><div class="meta">${depth}<span class="chip dim">지난 시도에서 열람 · 이번 시도 미확보</span></div>${esc(T(c.text))}</div>`;
             return `<div class="note-item unknown">${DEPTH_LABEL[c.depth]} · 아직 보지 못한 기억</div>`;
           })
           .join('');
@@ -925,7 +1020,7 @@ export function createApp({ root, side, debugEl, shell, game }) {
       const endHtml =
         end === 'unknown'
           ? ''
-          : `<div class="note-group"><h4>사건 정리</h4><div class="note-item ${end === 'past' ? 'past' : ''}"><div class="meta"><span class="chip gold">공통 후속 단서</span>${end === 'past' ? '<span class="chip dim">지난 시도에서 열람 · 이번 시도 미확보</span>' : ''}</div>${esc(CLUES.C_CASE_01_END.text)}</div></div>`;
+          : `<div class="note-group"><h4>사건 정리</h4><div class="note-item ${end === 'past' ? 'past' : ''}"><div class="meta"><span class="chip gold">공통 후속 단서</span>${end === 'past' ? '<span class="chip dim">지난 시도에서 열람 · 이번 시도 미확보</span>' : ''}</div>${esc(T(CLUES.C_CASE_01_END.text))}</div></div>`;
       sections.push(`<p class="legend">기억 단서는 독심으로 읽은 내용입니다. 상대가 믿는 것이지, 객관적 사실이나 실물 증거는 아닙니다.</p>${groups}${endHtml}`);
     }
     if (all || tab === 'evidence') {
@@ -939,10 +1034,10 @@ export function createApp({ root, side, debugEl, shell, game }) {
       sections.push(`<div class="note-group"><h4>확보 증거</h4>${items}<p class="legend">확보 증거는 실제 문서입니다. 상대 앞에 내밀 수 있는 것은 실물뿐입니다.</p></div>`);
     }
     if (all || tab === 'people') {
-      const ppl = ['HAERIN', 'TAEGEON', 'MUJIN', 'SEOJIN']
+      const ppl = [...(run?.player ? ['DOYUN'] : []), 'HAERIN', 'TAEGEON', 'MUJIN', 'SEOJIN']
         .map((id) => {
           const c = CHARACTERS[id];
-          return `<div class="note-item"><div class="meta"><b>${c.name}</b><span class="chip">${c.age}세 · ${esc(c.role)}</span>${id === 'HAERIN' && run ? `<span class="chip gold">${ICON.heart}신뢰 ${run.trust.HAERIN}</span>` : ''}</div><div class="muted" style="font-size:13px">${esc(c.note)}</div></div>`;
+          return `<div class="note-item"><div class="meta"><b>${esc(T(c.name))}${id === 'DOYUN' ? ' (나)' : ''}</b><span class="chip">${c.age}세 · ${esc(c.role)}</span>${id === 'HAERIN' && run ? `<span class="chip gold">${ICON.heart}신뢰 ${run.trust.HAERIN}</span>` : ''}</div><div class="muted" style="font-size:13px">${esc(T(c.note))}</div></div>`;
         })
         .join('');
       sections.push(`<div class="note-group"><h4>인물</h4>${ppl}</div>`);
@@ -967,7 +1062,7 @@ export function createApp({ root, side, debugEl, shell, game }) {
 
   function renderSide() {
     const run = game.run;
-    const show = ui.view === 'game' && run && !['PROLOGUE', 'RETURN'].includes(run.nodeId);
+    const show = ui.view === 'game' && run && !INTRO_NODES.includes(run.nodeId);
     shell.classList.toggle('with-side', !!show);
     if (show) side.innerHTML = `<h2 class="side-title">노트</h2><p class="legend" style="margin:0 0 10px">읽기 전용 · 진행 상태를 바꾸지 않습니다.</p>${notesContent(null, { all: true })}`;
     else side.innerHTML = '';
@@ -983,7 +1078,7 @@ export function createApp({ root, side, debugEl, shell, game }) {
         <div class="menu-list">
           ${inGame ? `<button class="btn" data-act="notes">${ICON.notes}노트</button>` : ''}
           <button class="btn" data-act="settings">설정</button>
-          ${inGame && !['PROLOGUE', 'RETURN'].includes(game.run.nodeId) ? `<button class="btn" data-act="retry-case">${ICON.restart}사건 처음부터 다시</button>` : ''}
+          ${inGame && !INTRO_NODES.includes(game.run.nodeId) ? `<button class="btn" data-act="retry-case">${ICON.restart}사건 처음부터 다시</button>` : ''}
           ${inGame ? `<button class="btn" data-act="to-title">타이틀로 나가기</button>` : ''}
           <p class="legend">진행은 자동 저장됩니다. 타이틀에서 이어하기로 돌아올 수 있습니다.</p>
         </div>
@@ -1106,9 +1201,12 @@ export function createApp({ root, side, debugEl, shell, game }) {
   /* =============================== 입력 처리 =============================== */
 
   const ACTIONS = {
+    'name-submit': () => submitName(),
+    'name-default': () => submitName({ ...DEFAULT_PLAYER }),
     'new-game': () => {
       const start = () => {
         game.newGame();
+        ui.nameDraft = null;
         ui.view = 'game';
         ui.overlay = null;
         ui.seqKey = null;
@@ -1366,7 +1464,7 @@ export function createApp({ root, side, debugEl, shell, game }) {
   };
 
   // 화면이 바뀌는 동작 직후의 연타가 새 화면의 다른 버튼을 누르지 않도록 잠시 막습니다.
-  const SCREEN_CHANGING = new Set(['new-game', 'continue', 'choose', 'start-topic', 'close-reward', 'confirm-yes', 'tutorial-start', 'tutorial-done', 'tutorial-skip', 'retry-case-now', 'to-title', 'next']);
+  const SCREEN_CHANGING = new Set(['name-submit', 'name-default', 'new-game', 'continue', 'choose', 'start-topic', 'close-reward', 'confirm-yes', 'tutorial-start', 'tutorial-done', 'tutorial-skip', 'retry-case-now', 'to-title', 'next']);
   root.addEventListener('click', (e) => {
     SFX.unlockAudio();
     const el = e.target.closest('[data-act]');
@@ -1382,7 +1480,16 @@ export function createApp({ root, side, debugEl, shell, game }) {
     if (SCREEN_CHANGING.has(act) && before !== after) ui.guardUntil = performance.now() + 320;
   });
 
+  root.addEventListener('input', onNameInput);
+
   document.addEventListener('keydown', (e) => {
+    if (e.target?.closest?.('input, textarea')) {
+      if (e.key === 'Enter' && e.target.closest('.name-form')) {
+        e.preventDefault();
+        submitName();
+      }
+      return; // 입력 칸에서는 단축키를 쓰지 않습니다.
+    }
     if (e.key === '`') {
       game.updateSettings({ debug: !game.meta.settings.debug });
       render();

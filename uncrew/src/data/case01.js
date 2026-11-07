@@ -3,7 +3,10 @@
  *
  * 대본 줄 형식
  *   { who: 'HAERIN', text }            인물 대사
- *   { who: 'DOYUN', mono: true, text } 도윤의 속마음
+ *   { who: 'DOYUN', mono: true, text } 주인공의 속마음 (이름을 떠올리기 전에는 '나'로 표시)
+ *   { who: 'HAERIN', inner: true, text } 능력으로 들은 다른 인물의 속마음
+ *   { card, sub, list }                화면 중앙 카드 (list가 있으면 목록 카드)
+ *   {name} {surname} {fullname}        주인공 이름 자리 표시. {name:아}처럼 조사를 붙일 수 있습니다. (core/names.js)
  *   { narr }                           지문
  *   { card, sub }                      화면 중앙 카드 (예: D-30)
  *   { fx: 'blackout' }                 암전
@@ -27,15 +30,15 @@ export const CASE_INFO = {
 };
 
 export const CHARACTERS = {
-  DOYUN: { id: 'DOYUN', name: '한도윤', short: '도윤', age: 35, role: '태경그룹 회장실 해결사', note: '십 년 동안 회장의 일을 처리해 왔다. 첫 번째 삶에서 횡령범으로 조작된 채 살해당했다.' },
-  TAEGEON: { id: 'TAEGEON', name: '차태건', short: '차태건', age: 59, role: '태경그룹 회장', note: '가난하던 도윤에게 일자리와 기회를 준 사람. 사소한 취향과 가족 사정까지 기억한다.' },
+  DOYUN: { id: 'DOYUN', name: '{fullname}', short: '{name}', age: 35, role: '태경그룹 회장실 해결사', note: '십 년 동안 회장의 일을 처리해 왔다. 첫 번째 삶에서 횡령범으로 조작된 채 살해당했다.' },
+  TAEGEON: { id: 'TAEGEON', name: '차태건', short: '차태건', age: 59, role: '태경그룹 회장', note: '가난하던 {name}에게 일자리와 기회를 준 사람. 사소한 취향과 가족 사정까지 기억한다.' },
   HAERIN: { id: 'HAERIN', name: '서해린', short: '서해린', age: 37, role: '회장 비서실장', note: '흐트러짐 없는 업무와 절제된 태도. 회장실의 모든 일정과 문서가 그녀를 거친다.' },
   MUJIN: { id: 'MUJIN', name: '권무진', short: '권무진', age: 45, role: '보안실장', note: '예의 바르고 조용하다. 첫 번째 삶의 마지막 밤, 주차장에서 기다리던 사람.' },
-  SEOJIN: { id: 'SEOJIN', name: '윤서진', short: '윤 변호사', age: 34, role: '외부 변호사', note: '어제 도윤이 재단 결산 자료를 전달한 상대. 이번 사건에는 직접 등장하지 않는다.' },
+  SEOJIN: { id: 'SEOJIN', name: '윤서진', short: '윤 변호사', age: 34, role: '외부 변호사', note: '어제 {name:이} 재단 결산 자료를 전달한 상대. 이번 사건에는 직접 등장하지 않는다.' },
 };
 
 export const SPEAKER_LABEL = {
-  DOYUN: '도윤',
+  DOYUN: '나', // 이름을 떠올린 뒤에는 입력한 이름으로 표시합니다.
   TAEGEON: '차태건',
   TAEGEON_ECHO: '차태건 · 기억 속 목소리',
   HAERIN: '서해린',
@@ -47,16 +50,16 @@ export const SPEAKER_LABEL = {
 /* ------------------------------------------------------------------ */
 
 export const CLUES = {
-  C_HA_1: { id: 'C_HA_1', topic: 'HA', who: 'HAERIN', depth: 1, text: '회장은 도윤과 윤서진이 만났다는 사실을 이미 알고 있다.' },
+  C_HA_1: { id: 'C_HA_1', topic: 'HA', who: 'HAERIN', depth: 1, text: '회장은 {name:과} 윤서진이 만났다는 사실을 이미 알고 있다.' },
   C_HA_2: { id: 'C_HA_2', topic: 'HA', who: 'HAERIN', depth: 2, text: '보안실장은 이번 점검 결과를 회장에게 직접 보고한다.' },
-  C_HA_3: { id: 'C_HA_3', topic: 'HA', who: 'HAERIN', depth: 3, text: '도윤의 출입 기록이 다른 직원들과 분리되어 보존되고 있다.' },
+  C_HA_3: { id: 'C_HA_3', topic: 'HA', who: 'HAERIN', depth: 3, text: '{name}의 출입 기록이 다른 직원들과 분리되어 보존되고 있다.' },
   C_HB_1: { id: 'C_HB_1', topic: 'HB', who: 'HAERIN', depth: 1, text: '서해린은 자료 전달 목록을 보관하고 있다.' },
   C_HB_2: { id: 'C_HB_2', topic: 'HB', who: 'HAERIN', depth: 2, text: '실제 전달 목록에는 재단 결산 자료 3건이 적혀 있다.' },
   C_HB_3: { id: 'C_HB_3', topic: 'HB', who: 'HAERIN', depth: 3, text: '서해린은 해외 송금 전표의 사본을 전달 목록에서 제외했다.' },
   C_BA_1: { id: 'C_BA_1', topic: 'BA', who: 'TAEGEON', depth: 1, text: '회장은 만남 자체보다 외부에 전달된 문서의 범위를 걱정한다.' },
   C_BA_2: { id: 'C_BA_2', topic: 'BA', who: 'TAEGEON', depth: 2, text: '회장이 가장 신경 쓰는 문서는 특정 해외 송금 전표다.' },
-  C_BA_3: { id: 'C_BA_3', topic: 'BA', who: 'TAEGEON', depth: 3, text: '회장은 도윤이 해당 전표의 중요성을 아직 모른다고 믿는다.' },
-  C_BB_1: { id: 'C_BB_1', topic: 'BB', who: 'TAEGEON', depth: 1, text: '이번 질문에는 사실 확인과 도윤의 반응 확인이 함께 들어 있다.' },
+  C_BA_3: { id: 'C_BA_3', topic: 'BA', who: 'TAEGEON', depth: 3, text: '회장은 {name:이} 해당 전표의 중요성을 아직 모른다고 믿는다.' },
+  C_BB_1: { id: 'C_BB_1', topic: 'BB', who: 'TAEGEON', depth: 1, text: '이번 질문에는 사실 확인과 {name}의 반응 확인이 함께 들어 있다.' },
   C_BB_2: { id: 'C_BB_2', topic: 'BB', who: 'TAEGEON', depth: 2, text: '자료 처리의 승인 절차와 기록을 명확히 하면 회장의 우려를 줄일 수 있다.' },
   C_BB_3: { id: 'C_BB_3', topic: 'BB', who: 'TAEGEON', depth: 3, text: '회장은 보안실장을 가까운 곳에 대기시켜 두었다.' },
   C_CASE_01_END: {
@@ -141,7 +144,7 @@ export const TOPICS = {
     teaser: '그가 듣고 싶은 대답의 모양',
     symbol: 'contract',
     clues: ['C_BB_1', 'C_BB_2', 'C_BB_3'],
-    fragment: '차태건의 기억. 오래전, 아직 젊은 도윤이 처음 보고서를 들고 왔던 날. 그는 그때도 내용보다 손을 먼저 보았다.',
+    fragment: '차태건의 기억. 오래전, 아직 젊은 {name:이} 처음 보고서를 들고 왔던 날. 그는 그때도 내용보다 손을 먼저 보았다.',
     plates: {
       A: { label: '목소리', fall: '“너도 좀 쉬어야지.” 같은 다정함.' },
       B: { label: '결재판', fall: '도장이 찍히지 않은 빈칸 하나.' },
@@ -164,33 +167,94 @@ const PROLOGUE = {
   next: 'RETURN',
   skippable: true,
   stage: { loc: 'parking', cast: [] },
+  // 주인공은 아직 자기 이름을 떠올리지 못한 상태라 '나'로만 표기하고, 다른 인물도 직함으로만 부릅니다.
   lines: [
-    { narr: '대규모 승계 작업이 끝난 밤. 마지막 업무로 지정된 장소는 본사 지하 주차장이었다.' },
+    { narr: '대규모 승계 작업이 끝난 밤. 열흘 만에 처음으로 사무실 불을 끄고 나왔다.' },
+    { narr: '자정 무렵, 비서실 번호로 메시지 한 통이 왔다. ‘지하 4층 B-17. 마지막 서류를 수령한 뒤 회장님께 보고 바랍니다.’' },
     { who: 'DOYUN', mono: true, text: '회장님께 보고만 하면 끝나는 일이었다.' },
     { who: 'DOYUN', mono: true, text: '십 년 동안, 나는 단 한 번도 그분의 지시를 의심하지 않았다.' },
-    { narr: '차 보닛 위에 서류 봉투가 놓여 있다. 첫 장에 내 이름과 ‘횡령’이라는 단어가 나란히 찍혀 있다.' },
-    { narr: '기둥 그림자 사이로 구두 소리가 다가온다.', stage: { cast: ['MUJIN'] }, sfx: 'tick' },
-    { who: 'MUJIN', text: '한 실장님. 오늘 이후의 일정은 없습니다.' },
+    { narr: '지하 4층. 천장의 형광등 하나가 깜빡이다 꺼진다. 휴대폰의 신호 표시가 한 칸씩 사라진다.', sfx: 'tick' },
+    { narr: 'B-17 자리에 세워진 검은 세단. 보닛 위에 봉인된 서류 봉투가 놓여 있다.' },
+    { narr: '첫 장은 감사 보고서다. 재단 자금 횡령. 혐의자 칸에는 내 이름이, 승인란에는 내 도장이 찍혀 있다.' },
+    { who: 'DOYUN', mono: true, text: '나는 이 서류에 도장을 찍은 적이 없다.' },
+    { narr: '넘기는 장마다 내 서명이 있다. 출장 기록, 법인 계좌, 해외 송금. 십 년 동안 회장님을 위해 처리한 일들이 전부 내 이름으로 다시 쓰여 있다.' },
+    { narr: '등 뒤에서 구두 소리가 울린다. 서두르지 않는 걸음이다.', stage: { cast: ['MUJIN'] }, sfx: 'tick' },
+    { who: 'MUJIN', text: '실장님. 서류는 확인하셨습니까.' },
+    { who: 'DOYUN', text: '권 실장님, 이게 뭡니까. 회장님께 먼저 보고드려야—' },
+    { who: 'MUJIN', text: '오늘 이후의 일정은 없습니다.' },
+    { narr: '기둥 뒤에서 두 사람이 더 걸어 나온다. 출구 쪽 셔터가 내려가는 소리가 주차장 전체를 길게 긁는다.', sfx: 'danger' },
     { who: 'DOYUN', text: '회장님은… 알고 계십니까?' },
-    { narr: '권무진은 대답하지 않는다. 그 침묵이 대답이었는지, 나는 끝내 알지 못했다.' },
-    { fx: 'blackout', sfx: 'thud', stage: { loc: 'black', cast: [] } },
+    { who: 'MUJIN', text: '그 질문의 답은 실장님이 제일 잘 아시지 않습니까.' },
+    { who: 'MUJIN', text: '이런 밤은 늘 실장님이 정리하셨으니까요.' },
+    { narr: '주머니 속 휴대폰이 짧게 떨린다. 신호가 잠깐 잡힌 모양이다. 화면에 부재중 전화 한 통이 떠 있다. ‘비서실’, 2분 전.' },
+    { narr: '다시 걸 틈은 없었다. 누군가 뒤에서 내 어깨를 붙잡는다. 손에서 빠져나간 휴대폰이 바닥에 부딪혀 화면이 갈라진다.', sfx: 'thud' },
+    { who: 'DOYUN', mono: true, text: '십 년. 나는 지금, 누구를 위해 죽는 걸까.' },
+    { fx: 'blackout', narr: '심장 소리가 느려진다. 그리고, 멈춘다.', sfx: 'heartbeat', stage: { loc: 'black', cast: [] } },
   ],
 };
 
 const RETURN = {
   id: 'RETURN',
   type: 'scene',
-  next: 'HAERIN_OPEN',
+  next: 'NAME_ENTRY',
   skippable: true,
   stage: { loc: 'black', cast: [] },
   lines: [
-    { who: 'TAEGEON_ECHO', text: '이번 일만 끝나면, 너도 좀 쉬어야지.', sfx: 'heartbeat' },
+    { fx: 'blackout', narr: '……숨이 들어온다. 차갑게, 한꺼번에, 너무 많이.', sfx: 'heartbeat' },
+    { who: 'TAEGEON_ECHO', text: '이번 일만 끝나면, 너도 좀 쉬어야지.' },
+    { narr: '눈을 뜬다. 형광등 불빛이 눈을 찌르고, 귓속에서 높은 소리가 멈추지 않는다.', stage: { loc: 'secretary', dizzy: true } },
+    { narr: '손이 먼저 목으로 간다. 아무것도 없다. 상처도, 통증도. 셔츠 깃은 아침에 다린 그대로 빳빳하다.' },
+    { narr: '책상, 모니터, 결재판. 주차장의 콘크리트 냄새와 비서실의 커피 냄새가 한데 섞이며 속이 뒤집힌다.' },
+    { who: 'DOYUN', mono: true, text: '여기는… 어디지. 나는 분명히 그 주차장에서—' },
+    { who: 'HAERIN', text: '실장님?', stage: { cast: ['HAERIN'] } },
+    { who: 'HAERIN', text: '실장님, 제 말 들리세요?' },
+    { who: 'DOYUN', mono: true, text: '실장님. 그건 직함이다. 이름이 아니다.' },
+    { who: 'DOYUN', mono: true, text: '셔터 소리도, 서류의 도장도, 구두 소리도 이렇게 선명한데… 정작 내 이름이 떠오르지 않는다.' },
+    { narr: '책상 위 명패로 손을 뻗는다. 글자가 물에 젖은 것처럼 번져 읽히지 않는다.' },
+    { who: 'DOYUN', mono: true, text: '가장 먼저 붙잡아야 하는 건 이름이다. 내가 누구였는지부터.' },
+  ],
+};
+
+/* 회귀 직후 어지러운 상태에서 자기 이름부터 떠올리는 장면. 이름 입력 화면입니다. */
+const NAME_ENTRY = {
+  id: 'NAME_ENTRY',
+  type: 'name',
+  next: 'AWAKEN',
+  stage: { loc: 'secretary', cast: ['HAERIN'], dizzy: true },
+};
+
+const AWAKEN = {
+  id: 'AWAKEN',
+  type: 'scene',
+  next: 'HAERIN_OPEN',
+  skippable: true,
+  stage: { loc: 'secretary', cast: ['HAERIN'] },
+  lines: [
+    { narr: '번져 있던 명패의 글자가 한 획씩 제자리를 찾는다. 「회장실 실장 {fullname}」.', sfx: 'chime' },
+    { who: 'DOYUN', mono: true, text: '{fullname}. 서른다섯. 태경그룹 회장실 실장.' },
+    { who: 'DOYUN', mono: true, text: '그리고 서른 날 뒤, 지하 주차장에서 죽은 사람.' },
     { card: 'D-30', sub: '죽기 30일 전 아침', sfx: 'chime' },
-    { narr: '형광등이 낮게 웅웅거린다. 비서실 책상. 손끝에 닿는 종이의 감촉.', stage: { loc: 'secretary', cast: ['HAERIN'] } },
-    { who: 'HAERIN', text: '실장님. 안색이 좋지 않네요.' },
+    { narr: '모니터 구석의 날짜, 휴대폰 첫 화면의 일정. ‘09:00 회장님 보고.’ 죽기 한 달 전의 바로 그 아침이다.' },
+    { who: 'HAERIN', text: '{surname} 실장님. 안색이 좋지 않네요.' },
     { who: 'DOYUN', mono: true, text: '서해린. 이 목소리도, 책상 위 문서도… 죽기 한 달 전과 같다.' },
-    { narr: '그녀의 가슴 앞으로 겹겹이 포개진 금속판과 나사가 떠오른다. 봉인처럼 박힌 구조물이다.', stage: { seal: ['HAERIN'] }, sfx: 'chime' },
-    { who: 'DOYUN', mono: true, text: '사람의 속을… 나사처럼 풀어낼 수 있다는 건가.' },
+    { narr: '그런데 하나가 다르다. 그녀의 가슴 앞에 금속판 몇 장이 겹쳐 떠 있고, 나사들이 그 판을 붙들고 있다.', stage: { seal: ['HAERIN'] }, sfx: 'chime' },
+    { who: 'DOYUN', mono: true, text: '눈을 깜빡여도 사라지지 않는다. 헛것이라기엔 나사 머리의 홈까지 너무 정교하다.' },
+    { narr: '시선을 나사 하나에 모은다. 나사가 아주 조금 돌아가고, 그 틈으로 목소리 하나가 새어 나온다.', sfx: 'tick' },
+    { who: 'HAERIN', inner: true, text: '…오늘만 넘기면 돼. 아무 일도 없을 거야.' },
+    { narr: '관자놀이를 쇠꼬챙이로 누르는 듯한 통증. 나사에서 눈을 떼자 목소리가 뚝 끊긴다.', sfx: 'thud' },
+    { who: 'DOYUN', mono: true, text: '사람의 속을 나사처럼 풀어낼 수 있다. 다만 오래 붙들 수는 없다. 한 번에 풀 수 있는 건 몇 개뿐이다.' },
+    { who: 'DOYUN', mono: true, text: '들리는 건 지금 이 사람이 붙들고 있는 기억과 감정뿐이다. 그게 사실인지는 따로 확인해야 한다.' },
+    { who: 'DOYUN', mono: true, text: '그리고 무엇보다, 내가 들여다봤다는 사실을 들켜서는 안 된다.' },
+    { narr: '숨을 고르고 남은 시간을 헤아린다. 서른 날. 무엇을 할 수 있는지보다, 무엇을 하지 않으면 죽는지부터.' },
+    { who: 'DOYUN', mono: true, text: '도망칠 수는 없다. 내 명의로 처리된 거래와 문서가 이미 있다. 잠적하는 순간 나는 진짜 횡령범이 되고, 쫓기는 배신자가 된다.' },
+    { who: 'DOYUN', mono: true, text: '시키는 대로 움직이면, 서른 날 뒤 같은 주차장에서 같은 구두 소리를 듣게 된다.' },
+    { who: 'DOYUN', mono: true, text: '남은 길은 하나다. 나를 죽이는 것보다 살려 두는 편이 이득인 상황을 만드는 것.' },
+    {
+      card: '이번 삶의 목표',
+      list: ['회장의 첫 호출에서 의심받지 않고 살아남는다', '내 이름으로 쌓이고 있는 기록의 실체를 찾는다', '누가, 왜 나를 죽였는지 밝혀낸다'],
+      sub: '타인의 비밀을 알아야 살아남는다. 하지만 안다는 사실을 들키면 죽는다.',
+    },
+    { who: 'DOYUN', mono: true, text: '아홉 시까지 이십 분. 첫 번째 시험은 이미 시작됐다.' },
   ],
 };
 
@@ -320,7 +384,7 @@ const BOSS_01 = {
       reaction: [
         { who: 'TAEGEON', text: '만난 적이 없다.' },
         { narr: '회장이 펜을 내려놓지 않은 채 나를 오래 본다.' },
-        { who: 'TAEGEON', text: '도윤아. 나는 네가 거짓말을 잘 못한다는 점을 좋아했다.' },
+        { who: 'TAEGEON', text: '{name:아}. 나는 네가 거짓말을 잘 못한다는 점을 좋아했다.' },
       ],
     },
     {
@@ -338,7 +402,7 @@ const BOSS_01 = {
       effects: { suspicionDelta: 35 },
       reaction: [
         { narr: '방 안의 공기가 가라앉는다.' },
-        { who: 'TAEGEON', text: '한도윤.' },
+        { who: 'TAEGEON', text: '{fullname}.' },
         { narr: '이름 석 자를 또박또박 부른다. 확인하듯이.' },
         { who: 'TAEGEON', text: '내가 묻는 말에 질문으로 답하는 버릇은 언제 생겼지?' },
       ],
@@ -380,7 +444,7 @@ const BOSS_02 = {
       effects: { suspicionDelta: 40 },
       reaction: [
         { narr: '서해린이 숨을 멈춘다.' },
-        { who: 'TAEGEON', text: '…도윤아.' },
+        { who: 'TAEGEON', text: '…{name:아}.' },
         { narr: '회장이 천천히 웃는다. 웃음이 끝나도 눈은 그대로다.' },
         { who: 'TAEGEON', text: '누가 너한테 그런 말을 넣었지?' },
       ],
@@ -438,7 +502,7 @@ const BOSS_03 = {
         { narr: '펜이 멈춘다.' },
         { who: 'TAEGEON', text: '해외 송금 전표.' },
         { narr: '회장이 그 단어를 처음 듣는 사람처럼 따라 말한다.' },
-        { who: 'TAEGEON', text: '그 이야기를 누구한테 들었나, 도윤아.' },
+        { who: 'TAEGEON', text: '그 이야기를 누구한테 들었나, {name:아}.' },
       ],
     },
     {
@@ -474,6 +538,8 @@ const BOSS_03 = {
 export const NODES = {
   PROLOGUE,
   RETURN,
+  NAME_ENTRY,
+  AWAKEN,
   HAERIN_OPEN,
   TUTORIAL: { id: 'TUTORIAL', type: 'tutorial', next: 'OFFICE_ENTER' },
   OFFICE_ENTER,
@@ -487,7 +553,7 @@ export const NODES = {
   RESULT: { id: 'RESULT', type: 'result' },
 };
 
-export const NODE_ORDER = ['PROLOGUE', 'RETURN', 'HAERIN_OPEN', 'TUTORIAL', 'OFFICE_ENTER', 'MEMORY_HUB', 'PUZZLE', 'REWARD', 'DOCUMENT_ACTION', 'BOSS_01', 'BOSS_02', 'BOSS_03', 'RESULT'];
+export const NODE_ORDER = ['PROLOGUE', 'RETURN', 'NAME_ENTRY', 'AWAKEN', 'HAERIN_OPEN', 'TUTORIAL', 'OFFICE_ENTER', 'MEMORY_HUB', 'PUZZLE', 'REWARD', 'DOCUMENT_ACTION', 'BOSS_01', 'BOSS_02', 'BOSS_03', 'RESULT'];
 
 /* 사건 재도전 체크포인트: HAERIN_OPEN 이전 상태 (명세 18.2) */
 export const CHECKPOINT_NODE = 'HAERIN_OPEN';

@@ -5,7 +5,7 @@ import { Game } from '../src/core/game.js';
 import { createMemoryStorage, SAVE_KEY, CORRUPT_PREFIX } from '../src/core/save.js';
 import { TOPICS } from '../src/data/case01.js';
 import { DIFFICULTIES } from '../src/data/config.js';
-import { newGame, toHub, choose, investigate, playSolution } from './helpers.js';
+import { newGame, toHub, toHaerinOpen, choose, investigate, playSolution } from './helpers.js';
 
 test('집중력보다 비싼 난이도는 시작할 수 없고, 거절 시 집중력이 줄지 않는다', () => {
   const { game } = newGame();
@@ -241,9 +241,7 @@ test('대화 리허설: 방향만 알려 주고, 같은 선택지에 다시 쓰�
 
 test('튜토리얼은 보상·집중력·아이템·의심도를 바꾸지 않는다', () => {
   const { game } = newGame();
-  game.newGame();
-  game.advance();
-  game.advance();
+  toHaerinOpen(game);
   choose(game, 'H01_A');
   const before = JSON.stringify({ ...game.run, activePuzzle: null });
   game.startTutorial();

@@ -42,7 +42,7 @@ async function tap(page, selector) {
 }
 
 /** 선택지가 나오거나(대화), 다른 화면으로 바뀔 때까지 대사를 넘깁니다. */
-async function advanceDialogue(page, { until = 'choices', max = 60 } = {}) {
+async function advanceDialogue(page, { until = 'choices', max = 160 } = {}) {
   for (let i = 0; i < max; i++) {
     if (until === 'choices' && (await page.locator('.choice').count())) return;
     if (until !== 'choices' && (await page.locator(until).count())) return;
@@ -136,8 +136,42 @@ async function run() {
   check('타이핑 중 다음 버튼 비활성(표시와 넘기기 분리)', await page.locator('[data-act="next"]').isDisabled());
   await tap(page, '[data-act="skip"]');
   check('건너뛰기는 마지막 줄에서 멈춤', (await state(page)).nodeId === 'PROLOGUE');
+  await shot(page, 'm02b-death');
+  await advanceDialogue(page, { until: '.stage.dizzy' });
+  await page.waitForTimeout(300);
+  await shot(page, 'm02c-return-dizzy');
+  // 회귀 직후: 이름을 떠올리기 전에는 주인공을 '나'로 표시
+  await advanceDialogue(page, { until: '.name-form' });
+  {
+    const st = await state(page);
+    check('회귀 장면 뒤 이름 입력 화면', st.nodeId === 'NAME_ENTRY' && st.player === null);
+  }
+  await shot(page, 'm02d-name-empty');
+  check('이름 입력 전에는 기억한다 버튼 비활성', await page.locator('[data-act="name-submit"]').isDisabled());
+  await page.fill('input[name="surname"]', '차');
+  await page.fill('input[name="given"]', '민호');
+  check('회장 일가 성(차) 거부 안내', (await page.textContent('[data-name-status]')).includes('회장 일가') && (await page.locator('[data-act="name-submit"]').isDisabled()));
+  await page.fill('input[name="surname"]', '서');
+  await page.fill('input[name="given"]', '해린');
+  check('다른 등장인물 이름 거부 안내', (await page.textContent('[data-name-status]')).includes('등장인물'));
+  await page.fill('input[name="surname"]', '강');
+  await page.fill('input[name="given"]', '민호');
+  check('올바른 이름: 호칭 미리보기(민호야 · 강 실장님)', (await page.textContent('[data-name-status]')).includes('민호야') && (await page.textContent('[data-name-status]')).includes('강 실장님'));
+  await shot(page, 'm02e-name-filled');
+  await page.press('input[name="given"]', 'Enter');
+  await page.waitForTimeout(200);
+  {
+    const st = await state(page);
+    check('Enter로 이름 확정 → 각성 장면, 이름 저장', st.nodeId === 'AWAKEN' && st.player.surname === '강' && st.player.given === '민호');
+  }
+  check('각성 장면에서 입력한 이름 사용', (await page.locator('.textbox .text').getAttribute('data-full')).includes('강민호'));
+  check('도입 장면에서는 수치 HUD 숨김', (await page.locator('.hud .day').count()) === 0);
+  await advanceDialogue(page, { until: '.goal-card' });
+  await page.waitForTimeout(300);
+  await shot(page, 'm02f-goals');
   await advanceDialogue(page, { until: '.hud .day' });
   await advanceDialogue(page);
+  check('주인공 속마음 화자가 입력한 이름으로 표시', (await page.textContent('.textbox .who')).includes('민호'));
   await shot(page, 'm03-haerin-open');
   check('HAERIN_OPEN 선택지 3개', (await page.locator('.choice').count()) === 3);
   await page.locator('.choice[data-id="H01_A"]').dblclick();
@@ -230,6 +264,7 @@ async function run() {
   await advanceDialogue(page, { until: '.hub-head' });
   await shot(page, 'm16-notes-past');
   await investigate(page, 'HA', 'easy');
+  check('단서 문장의 이름·조사 치환(민호와)', (await page.textContent('.reward-screen')).includes('회장은 민호와 윤서진이'));
   await tap(page, '[data-act="close-reward"]');
   // HB 보통에서 되감기 사용
   await tap(page, '[data-act="topic"][data-id="HB"]');
@@ -306,6 +341,19 @@ async function run() {
   await tap(page, '[data-act="confirm-yes"]');
   await choose(page, 'DOC_SKIP');
   await choose(page, 'B01_C');
+  // 반응 대사 중 회장이 이름 석 자를 부르는 줄 확인
+  let calledFullName = false;
+  for (let i = 0; i < 8 && !calledFullName; i++) {
+    const full = await page.locator('.textbox .text').getAttribute('data-full');
+    if (full && full.includes('강민호.')) calledFullName = true;
+    else {
+      if (await page.locator('[data-act="next"]').isDisabled()) await page.click('.textbox');
+      await page.waitForTimeout(220);
+      await page.locator('[data-act="next"]').click({ timeout: 2000 }).catch(() => {});
+      await page.waitForTimeout(150);
+    }
+  }
+  check('회장이 이름 석 자로 부름(강민호.)', calledFullName);
   await advanceDialogue(page);
   await shot(page, 'm18-review-warning');
   check('의심 70 이상: 문 밖 보안실장 실루엣 + 제거 검토 표시', (await page.locator('.door').count()) === 1 && (await page.textContent('.meter')).includes('제거 검토'));
@@ -328,6 +376,16 @@ async function run() {
     await p2.goto(URL);
     await tap(p2, '[data-act="new-game"]');
     await tap(p2, '[data-act="confirm-yes"]');
+    await advanceDialogue(p2, { until: '.name-form' });
+    check(`${vp.name}: 새 게임에서 지난 이름 미리 채움`, (await p2.inputValue('input[name="surname"]')) === '강');
+    await shot(p2, `${vp.name}-00-name`);
+    const nameGeo = await p2.evaluate(() => {
+      const f = document.querySelector('.name-form').getBoundingClientRect();
+      const app = document.getElementById('app').getBoundingClientRect();
+      return { fBottom: f.bottom, appBottom: app.bottom, fTop: f.top };
+    });
+    check(`${vp.name}: 이름 입력 칸이 화면 안에 있음`, nameGeo.fBottom <= nameGeo.appBottom + 1 && nameGeo.fTop >= 0, JSON.stringify(nameGeo));
+    await tap(p2, '[data-act="name-submit"]');
     await advanceDialogue(p2, { until: '.hud .day' });
     await advanceDialogue(p2);
     await shot(p2, `${vp.name}-01-choices`);

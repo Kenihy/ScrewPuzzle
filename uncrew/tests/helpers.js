@@ -22,10 +22,13 @@ export function playSolution(game) {
 }
 
 /** 새 게임을 시작해 HAERIN_OPEN까지 진행 */
-export function toHaerinOpen(game) {
+export function toHaerinOpen(game, player = { surname: '한', given: '도윤' }) {
   game.newGame();
   game.advance(); // PROLOGUE → RETURN
-  game.advance(); // RETURN → HAERIN_OPEN
+  game.advance(); // RETURN → NAME_ENTRY
+  const named = game.setPlayerName(player);
+  if (!named.ok) throw new Error(`name rejected: ${named.errors}`);
+  game.advance(); // AWAKEN → HAERIN_OPEN
 }
 
 /** 선택 후 반응 확인까지 */
