@@ -5,8 +5,11 @@
  * 화면: TITLE · 대화(PROLOGUE/RETURN/HAERIN_OPEN/OFFICE_ENTER/DOCUMENT_ACTION/BOSS) · 튜토리얼 · 허브 · 퍼즐 · 보상 · 결과
  * 오버레이: 노트(EVIDENCE) · 난이도 선택 · 메뉴 · 설정 · 확인창 · 테스트 패널
  */
-import { PROJECT, ITEMS, DIFFICULTIES, DEPTH_LABEL, suspicionBand } from '../data/config.js';
-import { NODES, CLUES, EVIDENCE, TOPICS, TOPIC_ORDER, CHARACTERS, SPEAKER_LABEL, BAND_LINES, REMOVAL_LINES, TUTORIAL, HUB, ENDINGS, RESULT_COMMON, CASE_INFO } from '../data/case01.js';
+import { PROJECT, ITEMS, DIFFICULTIES, DEPTH_LABEL, DEPTH_INFO, suspicionBand } from '../data/config.js';
+import { NODES, CLUES, EVIDENCE, TOPICS, TOPIC_ORDER, CHARACTERS, SPEAKER_LABEL, BAND_LINES, REMOVAL_LINES, TUTORIAL, HUB, ENDINGS, RESULT_COMMON, CASE_INFO, SITUATION, LIFE_GOALS } from '../data/case01.js';
+import { GUIDE } from '../data/guide.js';
+import { clueUsage, requirementTree } from '../core/clueInfo.js';
+import { buildTranscript } from '../core/transcript.js';
 import { getBoard, TUTORIAL_BOARD } from '../data/puzzles.js';
 import { pickHole, plateAt, hasScrew, canSelect, validDestinations, hasAnyValidMove, isBlocked, TEMP_HOLE_ID, REASONS } from '../core/puzzleEngine.js';
 import { nextHint, solve } from '../core/solver.js';
@@ -142,6 +145,76 @@ export function createApp({ root, side, debugEl, shell, game }) {
     return ents.map(([id, n]) => `${ITEMS[id].name} ×${n}`).join(', ');
   }
 
+  /* =============================== 단서 설명 · 조건표 =============================== */
+
+  const SCENE_NAME = {
+    HAERIN_OPEN: '비서실 대화',
+    DOCUMENT_ACTION: '전달 목록 요청',
+    BOSS_01: '회장 대면 1',
+    BOSS_02: '회장 대면 2',
+    BOSS_03: '회장 대면 3',
+  };
+
+  function clueLabel(cid) {
+    const c = CLUES[cid];
+    if (!c.topic) return '사건 정리 단서';
+    return `${CHARACTERS[c.who].name} · ${TOPICS[c.topic].title} · ${DEPTH_LABEL[c.depth]}`;
+  }
+
+  function reqLabel(leaf) {
+    if (leaf.clue) return `기억 단서 「${clueLabel(leaf.clue)}」`;
+    if (leaf.evidence) return `확보 증거 「${EVIDENCE[leaf.evidence].name}」`;
+    if (leaf.trustAtLeast) return `${Object.keys(leaf.trustAtLeast).map((w) => CHARACTERS[w].name).join('·')}의 충분한 신뢰`;
+    if (leaf.flag) return '앞선 선택';
+    return '조건';
+  }
+
+  /** 조건을 ✓/✗ 목록으로 그립니다. 색만이 아니라 기호로도 충족 여부를 보여 줍니다. */
+  function reqHtml(tree, top = true) {
+    if (!tree) return '';
+    if (tree.leaf) return `<span class="req ${tree.ok ? 'ok' : 'no'}">${tree.ok ? '✓' : '✗'} ${esc(reqLabel(tree.leaf))}</span>`;
+    const sep = tree.op === 'all' ? '+' : '또는';
+    const inner = tree.items.map((t) => reqHtml(t, false)).join(` <span class="req-op">${sep}</span> `);
+    return top ? inner : `<span class="req-group">( ${inner} )</span>`;
+  }
+
+  function choiceRef(nodeId, choiceId) {
+    return NODES[nodeId].choices.find((c) => c.id === choiceId);
+  }
+
+  /** 단서·증거가 실제로 작동하는 곳 */
+  function workLines(id, { evidence = false } = {}) {
+    const u = clueUsage(id, { evidence });
+    const out = [];
+    for (const x of u.unlocks) {
+      const tree = requirementTree(choiceRef(x.nodeId, x.choiceId).requires, game.run);
+      out.push(`<li><b>선택지를 엶</b> · ${SCENE_NAME[x.nodeId] || NODE_LABEL[x.nodeId]}에서 새 대답이 열립니다. 필요한 조건: ${reqHtml(tree)}</li>`);
+    }
+    for (const x of u.contradicts) out.push(`<li><b>모순 확인</b> · ${SCENE_NAME[x.nodeId] || NODE_LABEL[x.nodeId]}에 이 단서와 어긋나는 대답이 있습니다. 기억 돋보기로 표시할 수 있습니다.</li>`);
+    for (const x of u.related) out.push(`<li><b>관련 표시</b> · ${SCENE_NAME[x.nodeId] || NODE_LABEL[x.nodeId]}에서 관련된 선택지 옆에 ‘관련 단서 보유’가 표시됩니다.</li>`);
+    if (!out.length) out.push(`<li>직접 열리는 선택지는 없습니다. 대화에서 무엇이 위험한지 판단하는 근거로 씁니다.</li>`);
+    return `<ul class="work">${out.join('')}</ul>`;
+  }
+
+  /** 기억 단서 카드. status: 'owned' | 'past', detail: 판단 힌트·작동까지 보일지 */
+  function clueCard(cid, { status = 'owned', detail = true, extraChips = '' } = {}) {
+    const c = CLUES[cid];
+    const depth = c.depth ? DEPTH_INFO[c.depth] : null;
+    const chips = [
+      depth ? `<span class="chip teal" title="${esc(depth.desc)}">${depth.label}</span>` : `<span class="chip gold">사건 정리</span>`,
+      `<span class="chip">${c.topic ? `${CHARACTERS[c.who].name} · ${esc(TOPICS[c.topic].title)}` : '공통 후속 단서'}</span>`,
+      status === 'past' ? '<span class="chip dim">지난 시도에서 열람 · 이번 시도 미확보</span>' : '',
+      extraChips,
+    ].join('');
+    return `<div class="note-item clue ${status === 'past' ? 'past' : ''}">
+      <div class="meta">${chips}</div>
+      <div class="clue-text">${esc(T(c.text))}</div>
+      ${depth ? `<div class="clue-depth">${depth.label}: ${esc(depth.desc)}</div>` : ''}
+      ${detail ? `<div class="clue-use"><b>판단 힌트</b>${esc(T(c.use))}</div>` : ''}
+      ${detail ? `<div class="clue-work"><b>작동</b>${status === 'past' ? '<p class="faint">이번 시도에서 다시 확보해야 조건으로 쓰입니다.</p>' : ''}${workLines(cid)}</div>` : ''}
+    </div>`;
+  }
+
   /* =============================== 렌더 진입점 =============================== */
 
   function render() {
@@ -174,6 +247,11 @@ export function createApp({ root, side, debugEl, shell, game }) {
     if (textEl) startTyping(textEl);
     const svg = root.querySelector('svg[data-board]');
     if (svg) svg.addEventListener('click', onBoardClick);
+    const logBody = root.querySelector('[data-log-body]');
+    if (logBody && ui.overlay?.type === 'log' && !ui.overlay.scrolled) {
+      logBody.scrollTop = logBody.scrollHeight;
+      ui.overlay.scrolled = true;
+    }
     const focusEl = root.querySelector('[data-autofocus]');
     if (focusEl && ui.overlay) focusEl.focus({ preventScroll: true });
     const run = game.run;
@@ -324,6 +402,7 @@ export function createApp({ root, side, debugEl, shell, game }) {
     if (choicesReady) bottom = choicesPanel(seq.node);
     else {
       bottom = `<div class="controls">
+        <button class="btn small ghost" data-act="log" aria-label="대사 기록">${ICON.log}기록</button>
         ${!isLast ? `<button class="btn small ghost" data-act="skip">건너뛰기</button>` : ''}
         <span class="spacer"></span>
         <button class="btn primary next" data-act="next" ${full ? '' : 'disabled'} aria-label="다음 대사">다음 ${ICON.chevron}</button>
@@ -428,20 +507,27 @@ export function createApp({ root, side, debugEl, shell, game }) {
         const c = v.choice;
         const badges = [];
         if (!v.enabled) badges.push(`<span class="chip">${ICON.lock}${esc(c.lockHint)}</span>`);
-        if (v.related) badges.push(`<span class="chip teal">${ICON.notes}관련 단서 보유</span>`);
+        if (v.related) badges.push(`<span class="chip teal">${ICON.notes}관련 단서 보유 · ${esc(clueLabel(c.relatedClue))}</span>`);
         if (v.magnified) badges.push(`<span class="chip danger">${ICON.glass}모순: ${esc(T(CLUES[v.magnified.clueId].text))}</span>`);
         if (v.rehearsal) {
           const [t, ic, cls] = dirText[v.rehearsal];
           badges.push(`<span class="chip ${cls}">${ic}리허설: 의심도 ${t}</span>`);
         }
-        return `<button class="choice ${ui.picking && v.enabled ? 'picking' : ''} ${v.magnified ? 'contradict' : ''}" data-act="choose" data-id="${c.id}" ${v.enabled ? '' : 'disabled'}>
+        const req = c.requires ? requirementTree(c.requires, run) : null;
+        const reqLine = req ? `<span class="req-line">${v.enabled ? '<b>단서로 열린 대답</b> · 근거:' : '<b>필요</b>:'} ${reqHtml(req)}</span>` : '';
+        return `<button class="choice ${ui.picking && v.enabled ? 'picking' : ''} ${v.magnified ? 'contradict' : ''} ${req && v.enabled ? 'unlocked' : ''}" data-act="choose" data-id="${c.id}" ${v.enabled ? '' : 'disabled'}>
           <span>${esc(c.text)}</span>
           ${badges.length ? `<span class="badges">${badges.join('')}</span>` : ''}
+          ${reqLine}
         </button>`;
       })
       .join('');
     return `<div class="choices" role="group" aria-label="선택지">
-      ${items.length ? `<div class="item-bar"><span class="label">아이템</span>${items.join('')}</div>` : ''}
+      <div class="item-bar">
+        <button class="btn small ghost" data-act="log">${ICON.log}이전 대사 보기</button>
+        <button class="btn small ghost" data-act="guide">${ICON.help}용어 안내</button>
+        ${items.length ? `<span class="label">아이템</span>${items.join('')}` : ''}
+      </div>
       ${ui.picking ? `<div class="pick-banner"><span>미리 볼 선택지를 고르세요. 의심도의 방향만 표시합니다.</span><button class="btn small ghost" data-act="cancel-pick">취소</button></div>` : ''}
       ${buttons}
     </div>`;
@@ -587,7 +673,7 @@ export function createApp({ root, side, debugEl, shell, game }) {
     const statusChip = (t) => {
       const a = run.topicAttempts[t.id];
       if (!a) return `<span class="chip teal">미조사</span>`;
-      if (a.status === 'completed') return `<span class="chip gold">완료 · ${DIFFICULTIES[a.difficulty].name}</span>`;
+      if (a.status === 'completed') return `<span class="chip gold">완료 · ${[1, 2, 3].filter((n) => n <= DIFFICULTIES[a.difficulty].depth).map((n) => DEPTH_LABEL[n]).join('·')}</span>`;
       if (a.status === 'abandoned') return `<span class="chip dim">${ICON.flag}포기</span>`;
       return `<span class="chip warn">진행 중</span>`;
     };
@@ -618,6 +704,8 @@ export function createApp({ root, side, debugEl, shell, game }) {
           <span class="eyebrow">D-30 · 회장의 첫 질문 직전</span>
           <h2>${HUB.title}</h2>
           <p>${esc(HUB.desc)}</p>
+          <p class="case-goal"><b>이번 사건 목표</b> ${esc(SITUATION.caseGoal.goal)} 기억을 열어 단서를 모은 뒤, 회장의 질문에 그 단서를 근거로 대답합니다.</p>
+          <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn small ghost" data-act="guide">${ICON.help}기억 단서·깊이란?</button><button class="btn small ghost" data-act="log">${ICON.log}대사 기록</button></div>
           <div class="focus-row">${ICON.focus}<span>집중력 <b>${run.focus}</b> / 4</span>${pips(run.focus, 4)}</div>
         </div>
         ${card('HAERIN')}
@@ -659,7 +747,8 @@ export function createApp({ root, side, debugEl, shell, game }) {
         </div>
         <div class="sheet-body" role="radiogroup">
           ${opts}
-          <p class="legend">집중력은 조사 시작을 확정할 때만 줄어듭니다. 해체를 마치면 아이템을 확정 지급합니다. 이 주제는 이번 사건에서 한 번만 조사할 수 있습니다.</p>
+          <dl class="depth-table compact">${[1, 2, 3].map((n) => `<dt>${DEPTH_INFO[n].label}</dt><dd>${esc(DEPTH_INFO[n].desc)}</dd>`).join('')}</dl>
+          <p class="legend">난이도가 높을수록 더 깊은 기억까지 열립니다. 집중력은 조사 시작을 확정할 때만 줄어듭니다. 해체를 마치면 아이템을 확정 지급합니다. 이 주제는 이번 사건에서 한 번만 조사할 수 있습니다.</p>
         </div>
         <div class="sheet-foot">
           <button class="btn" data-act="close">취소</button>
@@ -919,10 +1008,11 @@ export function createApp({ root, side, debugEl, shell, game }) {
     const t = TOPICS[r.topicId];
     const d = DIFFICULTIES[r.difficulty];
     const clueCards = r.clues
-      .map((cid) => {
-        const c = CLUES[cid];
-        return `<div class="note-item"><div class="meta"><span class="chip teal">${DEPTH_LABEL[c.depth]}</span><span class="chip">기억 단서</span>${r.newClues.includes(cid) ? '' : '<span class="chip dim">이미 확보</span>'}</div>${esc(T(c.text))}</div>`;
-      })
+      .map((cid) => clueCard(cid, { extraChips: r.newClues.includes(cid) ? '' : '<span class="chip dim">이미 확보</span>' }))
+      .join('');
+    const itemCards = Object.entries(r.items)
+      .filter(([, n]) => n > 0)
+      .map(([id, n]) => `<div class="note-item"><div class="meta"><b>${ITEMS[id].name} ×${n}</b><span class="chip">${ITEMS[id].context === 'puzzle' ? '퍼즐에서 사용' : '대화 선택지에서 사용'}</span></div><div class="muted" style="font-size:13px">${esc(ITEMS[id].desc)}</div></div>`)
       .join('');
     return `<section class="screen reward-screen">
       ${hud(run)}
@@ -930,9 +1020,13 @@ export function createApp({ root, side, debugEl, shell, game }) {
         <span class="eyebrow">해체 완료 · ${d.name}</span>
         <h2 class="big-title">${CHARACTERS[t.target].name} · ${esc(t.title)}</h2>
         <p class="fragment">${esc(T(t.fragment))}</p>
-        <div class="section"><h3>얻은 기억 단서 ${r.clues.length}개</h3>${clueCards}
-          <p class="legend">기억 단서는 상대가 겪거나 믿는 내용입니다. 실물 증거와는 다릅니다.</p></div>
-        <div class="section"><h3>지급 아이템</h3><div class="note-item">${itemList(r.items)}</div></div>
+        <div class="explain">
+          <p><b>기억 단서</b>는 상대가 겪었거나 믿는 내용입니다. 회장 앞에 증거로 내밀 수는 없지만, 어떤 대답이 위험한지 판단하게 해 주고 일부 대답을 열어 줍니다.</p>
+          <p>${d.name} 난이도라서 ${DEPTH_INFO[d.depth].label}까지 열었습니다. ${[1, 2, 3].map((n) => `<b>${DEPTH_INFO[n].label}</b> ${esc(DEPTH_INFO[n].desc)}`).join(' · ')}</p>
+          <button class="btn small ghost" data-act="guide">${ICON.help}용어 안내 자세히 보기</button>
+        </div>
+        <div class="section"><h3>얻은 기억 단서 ${r.clues.length}개</h3>${clueCards}</div>
+        <div class="section"><h3>지급 아이템</h3>${itemCards || '<div class="note-item muted">없음</div>'}</div>
         <div class="section"><h3>남은 집중력</h3><div class="focus-row">${pips(run.focus, 4)}<b>${run.focus}</b> / 4</div></div>
       </div></div>
       <div class="foot-actions" style="grid-template-columns:1fr"><button class="btn primary" data-act="close-reward">멈춘 시간으로 돌아가기</button></div>
@@ -987,7 +1081,8 @@ export function createApp({ root, side, debugEl, shell, game }) {
         ${end.preview ? `<div class="preview"><span class="eyebrow">D-29 예고</span>${esc(end.preview)}</div>` : ''}
         ${removed ? '' : `<p class="legend">${leftItems.length ? `남은 아이템: ${leftItems.map(([id, n]) => `${ITEMS[id].name} ×${n}`).join(', ')}. ` : ''}${esc(RESULT_COMMON.nextCaseNote)}</p>`}
       </div></div>
-      <div class="foot-actions">
+      <div class="foot-actions three">
+        <button class="btn" data-act="log">${ICON.log}대사 기록</button>
         <button class="btn" data-act="to-title">타이틀로</button>
         <button class="btn primary" data-act="retry-case-now">사건 다시 하기</button>
       </div>
@@ -996,9 +1091,24 @@ export function createApp({ root, side, debugEl, shell, game }) {
 
   /* =============================== 노트 =============================== */
 
+  function situationContent({ compact = false } = {}) {
+    const S = SITUATION;
+    const timeline = S.firstLife.map((e) => `<li><b>${esc(e.when)}</b> ${esc(e.text)}</li>`).join('');
+    return `<div class="note-group situation">
+      <h4>이번 사건 · ${esc(S.caseGoal.title)}</h4>
+      <div class="note-item evidence"><b>${esc(S.caseGoal.goal)}</b><ol class="steps">${S.caseGoal.steps.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></div>
+      <h4>이번 삶의 목표</h4>
+      <div class="note-item"><ol class="steps">${LIFE_GOALS.map((g) => `<li>${esc(g)}</li>`).join('')}</ol></div>
+      ${compact ? '' : `<h4>지금 나의 처지</h4><div class="note-item"><ul class="steps">${S.now.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>
+      <h4>해결 방향</h4><div class="note-item"><ul class="steps">${S.way.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>
+      <h4>첫 번째 삶의 기록</h4><div class="note-item"><ul class="timeline">${timeline}</ul></div>`}
+    </div>`;
+  }
+
   function notesContent(tab, { all = false } = {}) {
     const run = game.run;
     const sections = [];
+    if (all || tab === 'situation') sections.push(situationContent({ compact: all }));
     if (all || tab === 'clues') {
       const groups = TOPIC_ORDER.map((tid) => {
         const t = TOPICS[tid];
@@ -1006,10 +1116,8 @@ export function createApp({ root, side, debugEl, shell, game }) {
           .map((cid) => {
             const c = CLUES[cid];
             const st = game.clueStatus(cid);
-            const depth = `<span class="chip teal">${DEPTH_LABEL[c.depth]}</span>`;
-            if (st === 'owned') return `<div class="note-item"><div class="meta">${depth}<span class="chip">이번 시도 확보</span></div>${esc(T(c.text))}</div>`;
-            if (st === 'past') return `<div class="note-item past"><div class="meta">${depth}<span class="chip dim">지난 시도에서 열람 · 이번 시도 미확보</span></div>${esc(T(c.text))}</div>`;
-            return `<div class="note-item unknown">${DEPTH_LABEL[c.depth]} · 아직 보지 못한 기억</div>`;
+            if (st === 'owned' || st === 'past') return clueCard(cid, { status: st, detail: !all });
+            return `<div class="note-item unknown"><b>${DEPTH_INFO[c.depth].label}</b> · 아직 보지 못한 기억 <span class="faint">(${esc(DEPTH_INFO[c.depth].desc)})</span></div>`;
           })
           .join('');
         const a = run?.topicAttempts[tid];
@@ -1020,13 +1128,13 @@ export function createApp({ root, side, debugEl, shell, game }) {
       const endHtml =
         end === 'unknown'
           ? ''
-          : `<div class="note-group"><h4>사건 정리</h4><div class="note-item ${end === 'past' ? 'past' : ''}"><div class="meta"><span class="chip gold">공통 후속 단서</span>${end === 'past' ? '<span class="chip dim">지난 시도에서 열람 · 이번 시도 미확보</span>' : ''}</div>${esc(T(CLUES.C_CASE_01_END.text))}</div></div>`;
-      sections.push(`<p class="legend">기억 단서는 독심으로 읽은 내용입니다. 상대가 믿는 것이지, 객관적 사실이나 실물 증거는 아닙니다.</p>${groups}${endHtml}`);
+          : `<div class="note-group"><h4>사건 정리</h4>${clueCard('C_CASE_01_END', { status: end, detail: !all })}</div>`;
+      sections.push(`<p class="legend">기억 단서는 독심으로 읽은 내용입니다. 상대가 믿는 것이지, 객관적 사실이나 실물 증거는 아닙니다. 카드의 <b>판단 힌트</b>는 대화에서의 의미, <b>작동</b>은 게임 규칙상 연결된 곳입니다.</p>${groups}${endHtml}`);
     }
     if (all || tab === 'evidence') {
       const items = Object.values(EVIDENCE)
         .map((e) => {
-          if (run?.evidence.includes(e.id)) return `<div class="note-item evidence"><div class="meta"><span class="chip gold">${ICON.doc}확보 증거</span></div><b>${esc(e.name)}</b><div>${esc(e.text)}</div><div class="muted" style="font-size:13px">${esc(e.note)}</div></div>`;
+          if (run?.evidence.includes(e.id)) return `<div class="note-item evidence clue"><div class="meta"><span class="chip gold">${ICON.doc}확보 증거</span></div><b>${esc(e.name)}</b><div>${esc(e.text)}</div><div class="muted" style="font-size:13px">${esc(e.note)}</div>${all ? '' : `<div class="clue-work"><b>작동</b>${workLines(e.id, { evidence: true })}</div>`}</div>`;
           if (game.meta.evidenceSeen.includes(e.id)) return `<div class="note-item past"><div class="meta"><span class="chip dim">지난 시도에서 확보 · 이번 시도 미확보</span></div><b>${esc(e.name)}</b></div>`;
           return `<div class="note-item unknown">아직 확보한 실물 증거가 없습니다.</div>`;
         })
@@ -1047,13 +1155,14 @@ export function createApp({ root, side, debugEl, shell, game }) {
 
   function notesSheet(o) {
     const tabs = [
+      ['situation', '상황'],
       ['clues', '기억 단서'],
       ['evidence', '확보 증거'],
       ['people', '인물'],
     ];
     return `<div class="overlay" data-act="overlay-bg">
       <div class="sheet" role="dialog" aria-modal="true" aria-label="노트" style="height:88%">
-        <div class="sheet-head"><h2>노트</h2><button class="icon-btn" data-act="close" aria-label="닫기" data-autofocus>${ICON.close}</button></div>
+        <div class="sheet-head"><h2>노트</h2><span style="display:flex;gap:6px"><button class="btn small ghost" data-act="guide">${ICON.help}용어 안내</button><button class="icon-btn" data-act="close" aria-label="닫기" data-autofocus>${ICON.close}</button></span></div>
         <div class="tabs" role="tablist">${tabs.map(([id, label]) => `<button class="tab" role="tab" aria-selected="${o.tab === id}" data-act="notes-tab" data-id="${id}">${label}</button>`).join('')}</div>
         <div class="sheet-body">${notesContent(o.tab)}</div>
       </div>
@@ -1077,6 +1186,8 @@ export function createApp({ root, side, debugEl, shell, game }) {
         <div class="sheet-head"><h2>메뉴</h2><button class="icon-btn" data-act="close" aria-label="닫기" data-autofocus>${ICON.close}</button></div>
         <div class="menu-list">
           ${inGame ? `<button class="btn" data-act="notes">${ICON.notes}노트</button>` : ''}
+          ${inGame ? `<button class="btn" data-act="log">${ICON.log}대사 기록</button>` : ''}
+          <button class="btn" data-act="guide">${ICON.help}용어 안내</button>
           <button class="btn" data-act="settings">설정</button>
           ${inGame && !INTRO_NODES.includes(game.run.nodeId) ? `<button class="btn" data-act="retry-case">${ICON.restart}사건 처음부터 다시</button>` : ''}
           ${inGame ? `<button class="btn" data-act="to-title">타이틀로 나가기</button>` : ''}
@@ -1120,9 +1231,73 @@ export function createApp({ root, side, debugEl, shell, game }) {
     </div>`;
   }
 
+  function guideSheet() {
+    const sections = GUIDE.map((g) => {
+      let extra = '';
+      if (g.depthTable) {
+        extra = `<dl class="depth-table">${[1, 2, 3]
+          .map((n) => `<dt>${DEPTH_INFO[n].label}</dt><dd>${esc(DEPTH_INFO[n].desc)}<br><span class="faint">${Object.values(DIFFICULTIES).filter((d) => d.depth >= n).map((d) => d.name).join('·')}에서 열림</span></dd>`)
+          .join('')}</dl>`;
+      }
+      if (g.items) {
+        extra = Object.values(ITEMS)
+          .map((it) => `<div class="note-item"><div class="meta"><b>${it.name}</b><span class="chip">${it.context === 'puzzle' ? '퍼즐' : '대화'}</span></div><div class="muted" style="font-size:13px">${esc(it.desc)}</div></div>`)
+          .join('');
+      }
+      return `<section class="guide-sec" id="guide-${g.id}"><h3>${esc(g.title)} <span class="chip">${esc(g.tag)}</span></h3>${g.body.map((b) => `<p>${esc(b)}</p>`).join('')}${extra}</section>`;
+    }).join('');
+    return `<div class="overlay" data-act="overlay-bg">
+      <div class="sheet" role="dialog" aria-modal="true" aria-label="용어 안내" style="height:88%">
+        <div class="sheet-head"><h2>용어 안내</h2><button class="icon-btn" data-act="close" aria-label="닫기" data-autofocus>${ICON.close}</button></div>
+        <div class="sheet-body guide-body">${sections}</div>
+      </div>
+    </div>`;
+  }
+
+  function logLineHtml(line) {
+    if (line.card && line.list) return `<div class="log-card"><b>${esc(line.card)}</b><ol>${line.list.map((g) => `<li>${esc(T(g))}</li>`).join('')}</ol></div>`;
+    if (line.card) return `<div class="log-card"><b>${esc(line.card)}</b> · ${esc(T(line.sub || ''))}</div>`;
+    if (line.fx === 'blackout') return `<p class="log-narr">— 암전 — ${esc(T(line.narr || ''))}</p>`;
+    if (line.who) {
+      const p = lineParts(line);
+      return `<div class="log-line ${p.whoCls || ''}"><b class="log-who">${esc(p.who)}</b><p class="${p.cls}">${esc(p.text)}</p></div>`;
+    }
+    return `<p class="log-narr">${esc(T(line.narr))}</p>`;
+  }
+
+  function logSheet() {
+    const run = game.run;
+    const entries = buildTranscript(run, { lineIdx: ui.lineIdx });
+    const body = entries
+      .map((e) => {
+        if (e.kind === 'scene') return `<div class="log-scene">${esc(SCENE_NAME[e.nodeId] || NODE_LABEL[e.nodeId] || e.nodeId)}</div>`;
+        if (e.kind === 'choice') {
+          const ch = choiceRef(e.nodeId, e.choiceId);
+          const r = e.record;
+          const ds = r.before && r.after ? r.after.suspicion - r.before.suspicion : null;
+          const dt = r.before && r.after ? r.after.trust.HAERIN - r.before.trust.HAERIN : null;
+          const chips = [
+            ds !== null ? `<span class="chip ${ds > 0 ? 'danger' : ds < 0 ? 'teal' : ''}">의심도 ${r.before.suspicion} → ${r.after.suspicion}</span>` : '',
+            dt ? `<span class="chip ${dt > 0 ? 'gold' : 'warn'}">서해린 신뢰 ${r.before.trust.HAERIN} → ${r.after.trust.HAERIN}</span>` : '',
+          ].join('');
+          return `<div class="log-choice"><span class="chip gold">내 대답</span><p>${esc(ch.text)}</p>${chips ? `<div class="meta">${chips}</div>` : ''}</div>`;
+        }
+        return logLineHtml(e.line);
+      })
+      .join('');
+    return `<div class="overlay" data-act="overlay-bg">
+      <div class="sheet" role="dialog" aria-modal="true" aria-label="대사 기록" style="height:88%">
+        <div class="sheet-head"><div><h2>대사 기록</h2><p class="legend">이번 시도에서 지금까지 나온 대사입니다. 읽기만 할 수 있습니다.</p></div><button class="icon-btn" data-act="close" aria-label="닫기" data-autofocus>${ICON.close}</button></div>
+        <div class="sheet-body log-body" data-log-body>${body || '<p class="muted">아직 기록된 대사가 없습니다.</p>'}</div>
+      </div>
+    </div>`;
+  }
+
   function overlayMarkup() {
     const o = ui.overlay;
     if (!o) return '';
+    if (o.type === 'guide') return guideSheet();
+    if (o.type === 'log') return logSheet();
     if (o.type === 'notes') return notesSheet(o);
     if (o.type === 'difficulty') return difficultySheet(o);
     if (o.type === 'menu') return menuSheet();
@@ -1239,15 +1414,26 @@ export function createApp({ root, side, debugEl, shell, game }) {
       render();
     },
     notes: () => {
-      ui.overlay = { type: 'notes', tab: 'clues' };
+      ui.overlay = { type: 'notes', tab: ui.notesTab || 'situation' };
       render();
     },
     'notes-tab': (el) => {
+      ui.notesTab = el.dataset.id;
       ui.overlay = { type: 'notes', tab: el.dataset.id };
       render();
     },
+    log: () => {
+      reveal();
+      ui.overlay = { type: 'log', back: ui.overlay && ui.overlay.type !== 'menu' ? ui.overlay : null, scrolled: false };
+      render();
+    },
+    guide: () => {
+      ui.overlay = { type: 'guide', back: ui.overlay && ui.overlay.type !== 'menu' ? ui.overlay : null };
+      render();
+    },
     close: () => {
-      ui.overlay = null;
+      // 다른 창에서 연 용어 안내·대사 기록은 닫으면 원래 창으로 돌아갑니다.
+      ui.overlay = ui.overlay?.back || null;
       render();
     },
     'overlay-bg': (el, e) => {

@@ -132,7 +132,10 @@ async function run() {
   await tap(page, '[data-act="new-game"]');
   await page.waitForSelector('.textbox');
   await shot(page, 'm02-prologue');
-  // 대사 표시 중에는 다음 버튼이 잠겨 있음
+  // 대사 표시 중에는 다음 버튼이 잠겨 있음 (짧은 첫 카드 다음의 긴 줄에서 확인)
+  await page.waitForSelector('[data-act="next"]:not([disabled])');
+  await page.waitForTimeout(200);
+  await page.click('[data-act="next"]');
   check('타이핑 중 다음 버튼 비활성(표시와 넘기기 분리)', await page.locator('[data-act="next"]').isDisabled());
   await tap(page, '[data-act="skip"]');
   check('건너뛰기는 마지막 줄에서 멈춤', (await state(page)).nodeId === 'PROLOGUE');
@@ -170,6 +173,13 @@ async function run() {
   await page.waitForTimeout(300);
   await shot(page, 'm02f-goals');
   await advanceDialogue(page, { until: '.hud .day' });
+  // 대사 도중 기록 열기: 지금 보고 있는 줄까지만 나옴
+  await tap(page, '.controls [data-act="log"]');
+  {
+    const logText = await page.textContent('[data-log-body]');
+    check('대사 도중 기록: 본 줄까지만 표시', logText.includes('서해린이 서류철을 가슴 앞에') && !logText.includes('회장님이 어제 윤 변호사에게 전달한 자료를'));
+  }
+  await tap(page, '[data-act="close"]');
   await advanceDialogue(page);
   check('주인공 속마음 화자가 입력한 이름으로 표시', (await page.textContent('.textbox .who')).includes('민호'));
   await shot(page, 'm03-haerin-open');
@@ -209,6 +219,11 @@ async function run() {
   s = await state(page);
   check('보통 클리어: 단서 2개, 집중력 2', s.clues.length === 2 && s.focus === 2, `${s.clues}`);
   await shot(page, 'm11-reward');
+  check('보상 화면: 깊이 설명·판단 힌트·작동 표시', (await page.locator('.explain').count()) === 1 && (await page.locator('.reward-screen .clue-use').count()) === 2 && (await page.textContent('.reward-screen')).includes('선택지를 엶'));
+  await tap(page, '.explain [data-act="guide"]');
+  check('용어 안내 열기', (await page.textContent('.guide-body')).includes('기억 단서') && (await page.textContent('.guide-body')).includes('중층'));
+  await shot(page, 'm11b-guide');
+  await tap(page, '[data-act="close"]');
   await page.reload();
   await tap(page, '[data-act="continue"]');
   s = await state(page);
@@ -235,6 +250,13 @@ async function run() {
   s = await state(page);
   check('보통+보통 후 집중력 0', s.focus === 0);
   await shot(page, 'm12-hub-done');
+  check('허브: 이번 사건 목표 표시', (await page.textContent('.case-goal')).includes('회장의 질문을 넘기고'));
+  await tap(page, '.hud [data-act="notes"]');
+  check('노트 상황 탭: 사건 목표·첫 번째 삶 기록', (await page.textContent('.sheet-body')).includes('첫 번째 삶의 기록') && (await page.textContent('.sheet-body')).includes('D-Day'));
+  await shot(page, 'm12b-notes-situation');
+  await tap(page, '[data-act="notes-tab"][data-id="clues"]');
+  check('노트 기억 단서 탭: 작동 설명', (await page.textContent('.sheet-body')).includes('작동'));
+  await tap(page, '[data-act="close"]');
   await tap(page, '[data-act="finish-investigation"]');
   await tap(page, '[data-act="confirm-yes"]');
   await advanceDialogue(page);
@@ -244,6 +266,16 @@ async function run() {
   await choose(page, 'B01_D');
   await advanceDialogue(page);
   await shot(page, 'm14-boss02');
+  check('단서로 열린 대답에 근거 표시(✓)', (await page.textContent('.choice[data-id="B02_D"]')).includes('단서로 열린 대답') && (await page.textContent('.choice[data-id="B02_D"]')).includes('✓'));
+  await tap(page, '.choices [data-act="log"]');
+  {
+    const logText = await page.textContent('[data-log-body]');
+    check('선택 중 이전 대사 보기: 앞 장면 질문·내 대답·수치 변화', logText.includes('어제 윤 변호사에게 무슨 서류를 줬지?') && logText.includes('내 대답') && logText.includes('전달 목록입니다') && logText.includes('의심도 20 → 10') && logText.includes('그쪽에서 다른 자료를 요구하지는 않았나?'));
+    check('대사 기록에 프롤로그부터 포함', logText.includes('십 년 전') && logText.includes('오늘 이후의 일정은 없습니다'));
+  }
+  await shot(page, 'm14b-log');
+  await tap(page, '[data-act="close"]');
+  check('기록을 닫으면 선택지로 돌아옴', (await page.locator('.choice').count()) === 4);
   await choose(page, 'B02_D');
   await advanceDialogue(page);
   check('B03_C 활성', await page.locator('.choice[data-id="B03_C"]').isEnabled());
@@ -304,6 +336,8 @@ async function run() {
   await choose(page, 'DOC_SKIP');
   await advanceDialogue(page);
   check('DOC_LIST 없으면 B01_D 잠김 + 조건 안내', (await page.locator('.choice[data-id="B01_D"]').isDisabled()) && (await page.textContent('.choice[data-id="B01_D"]')).includes('전달 목록'));
+  check('잠긴 선택지에 필요한 조건 ✗ 표시', (await page.textContent('.choice[data-id="B01_D"] .req-line')).includes('✗'));
+
   await choose(page, 'B01_B');
   await choose(page, 'B02_A');
   await choose(page, 'B03_A');

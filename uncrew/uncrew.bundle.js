@@ -1,7 +1,7 @@
 /*
  * 언스크류(UNCREW) — 실행용 단일 스크립트
  * 자동 생성 파일입니다. 직접 고치지 말고 src/를 수정한 뒤 `node tools/build.mjs`를 실행하세요.
- * 포함 모듈: 15개 (진입점 src/main.js)
+ * 포함 모듈: 18개 (진입점 src/main.js)
  */
 (function () {
 'use strict';
@@ -70,18 +70,18 @@ const SPEAKER_LABEL = {
 /* ------------------------------------------------------------------ */
 
 const CLUES = {
-  C_HA_1: { id: 'C_HA_1', topic: 'HA', who: 'HAERIN', depth: 1, text: '회장은 {name:과} 윤서진이 만났다는 사실을 이미 알고 있다.' },
-  C_HA_2: { id: 'C_HA_2', topic: 'HA', who: 'HAERIN', depth: 2, text: '보안실장은 이번 점검 결과를 회장에게 직접 보고한다.' },
-  C_HA_3: { id: 'C_HA_3', topic: 'HA', who: 'HAERIN', depth: 3, text: '{name}의 출입 기록이 다른 직원들과 분리되어 보존되고 있다.' },
-  C_HB_1: { id: 'C_HB_1', topic: 'HB', who: 'HAERIN', depth: 1, text: '서해린은 자료 전달 목록을 보관하고 있다.' },
-  C_HB_2: { id: 'C_HB_2', topic: 'HB', who: 'HAERIN', depth: 2, text: '실제 전달 목록에는 재단 결산 자료 3건이 적혀 있다.' },
-  C_HB_3: { id: 'C_HB_3', topic: 'HB', who: 'HAERIN', depth: 3, text: '서해린은 해외 송금 전표의 사본을 전달 목록에서 제외했다.' },
-  C_BA_1: { id: 'C_BA_1', topic: 'BA', who: 'TAEGEON', depth: 1, text: '회장은 만남 자체보다 외부에 전달된 문서의 범위를 걱정한다.' },
-  C_BA_2: { id: 'C_BA_2', topic: 'BA', who: 'TAEGEON', depth: 2, text: '회장이 가장 신경 쓰는 문서는 특정 해외 송금 전표다.' },
-  C_BA_3: { id: 'C_BA_3', topic: 'BA', who: 'TAEGEON', depth: 3, text: '회장은 {name:이} 해당 전표의 중요성을 아직 모른다고 믿는다.' },
-  C_BB_1: { id: 'C_BB_1', topic: 'BB', who: 'TAEGEON', depth: 1, text: '이번 질문에는 사실 확인과 {name}의 반응 확인이 함께 들어 있다.' },
-  C_BB_2: { id: 'C_BB_2', topic: 'BB', who: 'TAEGEON', depth: 2, text: '자료 처리의 승인 절차와 기록을 명확히 하면 회장의 우려를 줄일 수 있다.' },
-  C_BB_3: { id: 'C_BB_3', topic: 'BB', who: 'TAEGEON', depth: 3, text: '회장은 보안실장을 가까운 곳에 대기시켜 두었다.' },
+  C_HA_1: { id: 'C_HA_1', topic: 'HA', who: 'HAERIN', depth: 1, text: '회장은 {name:과} 윤서진이 만났다는 사실을 이미 알고 있다.', use: '회장 앞에서 ‘만나지 않았다’고 하면 거짓말이 바로 드러난다. 만남 자체는 인정하는 편이 안전하다.' },
+  C_HA_2: { id: 'C_HA_2', topic: 'HA', who: 'HAERIN', depth: 2, text: '보안실장은 이번 점검 결과를 회장에게 직접 보고한다.', use: '이 방에서 한 말과 태도는 보안실장을 거쳐 회장에게 그대로 올라간다. 날 선 말은 기록으로 남는다고 보는 게 좋다.' },
+  C_HA_3: { id: 'C_HA_3', topic: 'HA', who: 'HAERIN', depth: 3, text: '{name}의 출입 기록이 다른 직원들과 분리되어 보존되고 있다.', use: '누군가 내 동선을 따로 모으고 있다. 이번 사건 다음으로 이어지는 실마리다.' },
+  C_HB_1: { id: 'C_HB_1', topic: 'HB', who: 'HAERIN', depth: 1, text: '서해린은 자료 전달 목록을 보관하고 있다.', use: '전달 목록은 서해린에게 있다. 신뢰가 충분하면 조사를 마친 뒤 실물 사본으로 받을 수 있다.' },
+  C_HB_2: { id: 'C_HB_2', topic: 'HB', who: 'HAERIN', depth: 2, text: '실제 전달 목록에는 재단 결산 자료 3건이 적혀 있다.', use: '업무 서류를 넘긴 사실은 이미 확인된다. ‘개인적인 만남’이었다는 변명은 앞뒤가 맞지 않는다.' },
+  C_HB_3: { id: 'C_HB_3', topic: 'HB', who: 'HAERIN', depth: 3, text: '서해린은 해외 송금 전표의 사본을 전달 목록에서 제외했다.', use: '서해린은 문제의 전표를 일부러 목록에서 뺐다. 그녀가 나를 완전히 버린 것은 아닐지도 모른다.' },
+  C_BA_1: { id: 'C_BA_1', topic: 'BA', who: 'TAEGEON', depth: 1, text: '회장은 만남 자체보다 외부에 전달된 문서의 범위를 걱정한다.', use: '회장이 묻는 핵심은 누구를 만났느냐가 아니라 무엇을 넘겼느냐다. 전달한 범위를 분명히 말하는 대답이 안전하다.' },
+  C_BA_2: { id: 'C_BA_2', topic: 'BA', who: 'TAEGEON', depth: 2, text: '회장이 가장 신경 쓰는 문서는 특정 해외 송금 전표다.', use: '문제의 문서는 해외 송금 전표다. 내가 먼저 그 이름을 꺼내면, 알고 있다는 사실이 드러난다.' },
+  C_BA_3: { id: 'C_BA_3', topic: 'BA', who: 'TAEGEON', depth: 3, text: '회장은 {name:이} 해당 전표의 중요성을 아직 모른다고 믿는다.', use: '회장은 내가 전표의 의미를 모른다고 믿는다. 그 믿음을 지켜 주면서 기록을 남기자고 제안할 수 있다.' },
+  C_BB_1: { id: 'C_BB_1', topic: 'BB', who: 'TAEGEON', depth: 1, text: '이번 질문에는 사실 확인과 {name}의 반응 확인이 함께 들어 있다.', use: '회장은 대답의 내용만큼 태도를 본다. 되묻거나 날을 세우면 내용과 상관없이 의심이 커진다.' },
+  C_BB_2: { id: 'C_BB_2', topic: 'BB', who: 'TAEGEON', depth: 2, text: '자료 처리의 승인 절차와 기록을 명확히 하면 회장의 우려를 줄일 수 있다.', use: '결재 절차와 기록을 앞세우는 대답은 회장의 걱정을 덜어 준다. 실물 목록과 함께라면 더 확실하다.' },
+  C_BB_3: { id: 'C_BB_3', topic: 'BB', who: 'TAEGEON', depth: 3, text: '회장은 보안실장을 가까운 곳에 대기시켜 두었다.', use: '회장은 이미 최악의 경우를 준비해 두었다. 이 대화에서의 실수는 곧바로 끝으로 이어질 수 있다.' },
   C_CASE_01_END: {
     id: 'C_CASE_01_END',
     topic: null,
@@ -90,6 +90,7 @@ const CLUES = {
     kind: 'case',
     text: '나의 업무 기록이 별도 보존되고 있다. 단순한 자료 확인이 아니다.',
     reconfirmText: '별도 보존 사실이 다시 확인되었다. 단순한 자료 확인이 아니다.',
+    use: '내 기록을 따로 모으는 누군가가 있다. 다음 사건으로 이어지는 핵심 실마리다.',
   },
 };
 
@@ -178,6 +179,47 @@ const TOPICS = {
 const TOPIC_ORDER = ['HA', 'HB', 'BA', 'BB'];
 
 /* ------------------------------------------------------------------ */
+/* 이야기 상황 요약 — 각성 장면의 목표 카드와 노트의 '상황' 탭에서 씁니다.   */
+/* ------------------------------------------------------------------ */
+
+const LIFE_GOALS = [
+  '회장의 첫 호출에서 의심받지 않고 살아남는다',
+  '내 이름으로 쌓이고 있는 기록의 실체를 찾는다',
+  '나를 지켜 줄 실물 기록과 내 편을 확보한다',
+  '누가, 왜 나를 죽였는지 밝혀낸다',
+];
+
+const SITUATION = {
+  firstLife: [
+    { when: '십 년 전', text: '가난과 어머니의 병원비에 짓눌리던 나에게 차태건 회장이 회장실 일을 맡겼다. 병원비는 그때부터 회장 비서실 이름으로 결제되고 있다.' },
+    { when: '십 년 동안', text: '회장 일가의 사생활과 사고, 외부에 나가면 안 되는 서류를 처리했다. 보고서를 고쳐 일을 조용히 만드는 법도 익혔다.' },
+    { when: '올해 봄', text: '회장이 아들 차도혁 사장에게 그룹을 넘기는 승계 작업을 시작했다. 자금 이동과 해외 법인 정리의 실무를 내가 맡았다.' },
+    { when: 'D-30', text: '회장이 외부 변호사(윤서진)에게 넘긴 서류를 물었다. 첫 번째 삶에서는 이 질문에 대수롭지 않게 대답했다.' },
+    { when: 'D-29 이후', text: '계좌 위임장, 출장 명의, 송금 승인서가 내 책상으로만 모였다. 감사가 시작되고 사람들이 나를 피했다.' },
+    { when: 'D-Day', text: '승계 작업이 끝난 밤, 지하 주차장에서 내 도장이 찍힌 횡령 서류와 함께 보안실장 권무진에게 제거되었다.' },
+  ],
+  now: [
+    '내 명의로 처리된 거래와 문서는 이미 존재한다. 도망치면 횡령범이자 배신자가 되고, 어머니의 병원비도 끊긴다.',
+    '시키는 대로 움직이면 서른 날 뒤 같은 방식으로 죽는다.',
+    '누가 나를 죽이기로 했는지 아직 모른다. 회장, 후계자 차도혁, 회장실 안의 누군가 모두 가능성이 있다.',
+  ],
+  way: [
+    '의심받지 않는다. 능력으로 알아낸 것을 아는 티를 내는 순간 끝이다.',
+    '실물 기록을 확보한다. 기억으로 읽은 내용은 판단의 근거일 뿐, 증거로 내밀 수 있는 건 손에 쥔 서류뿐이다.',
+    '혼자 버티지 않는다. 이해관계가 맞는 사람을 찾아 내 편으로 만든다.',
+  ],
+  caseGoal: {
+    title: 'D-30 · 어제의 전달 목록',
+    goal: '회장의 질문을 넘기고, 나를 향한 기록 수집의 실마리를 잡는다.',
+    steps: [
+      '멈춘 시간에서 서해린과 회장의 기억을 해체해 기억 단서를 얻는다. (집중력 4 안에서 주제와 난이도를 고른다)',
+      '조사를 마치면 서해린에게 전달 목록 사본을 받아 실물 증거로 확보할 수 있다. (서해린의 신뢰가 필요하다)',
+      '회장 대면 3번의 질문에 단서를 근거로 대답한다. 의심도가 100이 되면 그 자리에서 끝난다.',
+    ],
+  },
+};
+
+/* ------------------------------------------------------------------ */
 /* 장면(노드)                                                            */
 /* ------------------------------------------------------------------ */
 
@@ -186,10 +228,23 @@ const PROLOGUE = {
   type: 'scene',
   next: 'RETURN',
   skippable: true,
-  stage: { loc: 'parking', cast: [] },
+  stage: { loc: 'archive', cast: [] },
   // 주인공은 아직 자기 이름을 떠올리지 못한 상태라 '나'로만 표기하고, 다른 인물도 직함으로만 부릅니다.
+  // 구성: ① 십 년의 충성과 그 대가 → ② 첫 번째 삶의 마지막 서른 날 → ③ 죽음의 밤
   lines: [
-    { narr: '대규모 승계 작업이 끝난 밤. 열흘 만에 처음으로 사무실 불을 끄고 나왔다.' },
+    { card: '십 년 전', sub: '태경그룹 회장실' },
+    { narr: '어머니의 병원비 고지서가 현관에 쌓이던 해였다. 차태건 회장은 이력서 한 장 없는 나에게 회장실 책상 하나를 내주었다.' },
+    { who: 'TAEGEON_ECHO', text: '맡긴 일은 끝까지 하는 놈이라고 들었다. 그거면 됐다.' },
+    { narr: '그날부터 어머니의 병원비는 회장 비서실 이름으로 결제되었다. 십 년 동안 단 한 번도 끊긴 적이 없다.' },
+    { who: 'DOYUN', mono: true, text: '나는 회장님의 일을 처리했다. 사생활, 후계자들의 사고, 세상에 나가면 안 되는 서류들. 보고서의 어느 문장을 지우면 일이 조용해지는지도 그때 배웠다.' },
+    { who: 'DOYUN', mono: true, text: '언젠가는 나도 이 가족의 일원으로 인정받을 수 있다고 믿었다.' },
+    { card: '마지막 서른 날', sub: '첫 번째 삶' },
+    { narr: '올해 봄, 회장님은 그룹을 아들 차도혁 사장에게 넘기는 승계 작업을 시작했다. 재단으로 자금을 옮기고, 해외 법인을 정리하고, 지분을 맞추는 일. 실무는 전부 내 몫이었다.' },
+    { narr: '죽기 서른 날 전 아침, 회장님이 물었다. 어제 외부 변호사에게 무슨 서류를 넘겼느냐고. 나는 대수롭지 않게 대답했다.' },
+    { narr: '그날부터 결재 서류가 내 책상으로만 모이기 시작했다. 법인 계좌 위임장, 해외 출장 명의, 송금 승인서. 회장님은 ‘네가 맡아야 안심이 된다’고 했고, 나는 읽지도 않고 도장을 찍었다.' },
+    { narr: '며칠 뒤, 감사팀이 재단 결산을 다시 열었다. 동료들은 복도에서 내 눈을 피했다. 내 출입증으로는 열리지 않는 문이 하나둘 늘었다.' },
+    { who: 'DOYUN', mono: true, text: '이상하다고 느꼈어야 했다. 하지만 나는 회장님이 나를 버릴 리 없다고 믿었다.' },
+    { narr: '대규모 승계 작업이 끝난 밤. 열흘 만에 처음으로 사무실 불을 끄고 나왔다.', stage: { loc: 'parking' } },
     { narr: '자정 무렵, 비서실 번호로 메시지 한 통이 왔다. ‘지하 4층 B-17. 마지막 서류를 수령한 뒤 회장님께 보고 바랍니다.’' },
     { who: 'DOYUN', mono: true, text: '회장님께 보고만 하면 끝나는 일이었다.' },
     { who: 'DOYUN', mono: true, text: '십 년 동안, 나는 단 한 번도 그분의 지시를 의심하지 않았다.' },
@@ -265,16 +320,17 @@ const AWAKEN = {
     { who: 'DOYUN', mono: true, text: '사람의 속을 나사처럼 풀어낼 수 있다. 다만 오래 붙들 수는 없다. 한 번에 풀 수 있는 건 몇 개뿐이다.' },
     { who: 'DOYUN', mono: true, text: '들리는 건 지금 이 사람이 붙들고 있는 기억과 감정뿐이다. 그게 사실인지는 따로 확인해야 한다.' },
     { who: 'DOYUN', mono: true, text: '그리고 무엇보다, 내가 들여다봤다는 사실을 들켜서는 안 된다.' },
-    { narr: '숨을 고르고 남은 시간을 헤아린다. 서른 날. 무엇을 할 수 있는지보다, 무엇을 하지 않으면 죽는지부터.' },
-    { who: 'DOYUN', mono: true, text: '도망칠 수는 없다. 내 명의로 처리된 거래와 문서가 이미 있다. 잠적하는 순간 나는 진짜 횡령범이 되고, 쫓기는 배신자가 된다.' },
+    { narr: '숨을 고르고, 첫 번째 삶의 서른 날을 처음부터 다시 짚는다.' },
+    { who: 'DOYUN', mono: true, text: '내 책상에 쌓이던 서류는 우연이 아니었다. 누군가 서른 날에 걸쳐 내 이름으로 길을 깔았고, 그 길의 끝이 지하 주차장이었다.' },
+    { who: 'DOYUN', mono: true, text: '누가 시작했는지는 아직 모른다. 회장님일 수도, 승계를 받는 차도혁 사장일 수도, 회장실 안의 누군가일 수도 있다.' },
+    { who: 'DOYUN', mono: true, text: '도망칠 수는 없다. 내 명의로 처리된 거래와 문서가 이미 있다. 잠적하는 순간 나는 진짜 횡령범이자 쫓기는 배신자가 되고, 어머니의 병원비도 그날로 끊긴다.' },
     { who: 'DOYUN', mono: true, text: '시키는 대로 움직이면, 서른 날 뒤 같은 주차장에서 같은 구두 소리를 듣게 된다.' },
-    { who: 'DOYUN', mono: true, text: '남은 길은 하나다. 나를 죽이는 것보다 살려 두는 편이 이득인 상황을 만드는 것.' },
-    {
-      card: '이번 삶의 목표',
-      list: ['회장의 첫 호출에서 의심받지 않고 살아남는다', '내 이름으로 쌓이고 있는 기록의 실체를 찾는다', '누가, 왜 나를 죽였는지 밝혀낸다'],
-      sub: '타인의 비밀을 알아야 살아남는다. 하지만 안다는 사실을 들키면 죽는다.',
-    },
-    { who: 'DOYUN', mono: true, text: '아홉 시까지 이십 분. 첫 번째 시험은 이미 시작됐다.' },
+    { who: 'DOYUN', mono: true, text: '남은 길은 하나다. 나를 죽이는 것보다 살려 두는 편이 이득인 상황을 만드는 것. 내가 사라지면 함께 무너지는 기록을, 내 손에 쥐는 것.' },
+    { who: 'DOYUN', mono: true, text: '그러려면 세 가지가 필요하다. 의심받지 않을 것. 나를 지켜 줄 실물 기록을 확보할 것. 혼자 버티지 않을 것.' },
+    { who: 'DOYUN', mono: true, text: '이 능력으로 들은 기억은 판단을 도와줄 뿐, 누구 앞에도 증거로 내밀 수 없다. 내밀 수 있는 건 손에 쥔 서류뿐이다.' },
+    { card: '이번 삶의 목표', list: LIFE_GOALS, sub: '타인의 비밀을 알아야 살아남는다. 하지만 안다는 사실을 들키면 죽는다.' },
+    { who: 'DOYUN', mono: true, text: '첫 시험은 오늘 아침이다. 첫 번째 삶이 어긋나기 시작한 바로 그 질문, 어제 외부 변호사에게 무엇을 넘겼느냐는 질문.' },
+    { who: 'DOYUN', mono: true, text: '이번에는 대답하기 전에, 묻는 사람의 속부터 들여다본다. 아홉 시까지 이십 분.' },
   ],
 };
 
@@ -667,7 +723,7 @@ const RESULT_COMMON = {
   nextCaseNote: '다음 사건(D-29)은 아직 준비 중입니다. 남은 아이템은 저장되어 있습니다.',
 };
 
-return { CASE_ID, CASE_INFO, CHARACTERS, SPEAKER_LABEL, CLUES, EVIDENCE, TOPICS, TOPIC_ORDER, NODES, NODE_ORDER, CHECKPOINT_NODE, BAND_LINES, REMOVAL_LINES, TUTORIAL, HUB, ENDINGS, RESULT_COMMON };
+return { CASE_ID, CASE_INFO, CHARACTERS, SPEAKER_LABEL, CLUES, EVIDENCE, TOPICS, TOPIC_ORDER, LIFE_GOALS, SITUATION, NODES, NODE_ORDER, CHECKPOINT_NODE, BAND_LINES, REMOVAL_LINES, TUTORIAL, HUB, ENDINGS, RESULT_COMMON };
 });
 
 /* ===== src/data/config.js ===== */
@@ -722,6 +778,13 @@ const ITEMS = {
 
 const DEPTH_LABEL = { 1: '표면', 2: '중층', 3: '심층' };
 
+/** 기억 단서의 깊이 (명세 7장) */
+const DEPTH_INFO = {
+  1: { label: '표면', desc: '상대가 겉으로 내세우는 명분, 이미 알고 있는 사실' },
+  2: { label: '중층', desc: '상대가 감추고 있는 행동과 구체적인 기억' },
+  3: { label: '심층', desc: '그 행동을 선택하게 만든 욕망과 두려움, 숨은 전제' },
+};
+
 const DIFFICULTIES = {
   easy: {
     id: 'easy',
@@ -767,7 +830,7 @@ function clamp(v, lo = 0, hi = 100) {
   return Math.max(lo, Math.min(hi, v));
 }
 
-return { SCHEMA_VERSION, PROJECT, INITIAL_RUN, ITEM_IDS, ITEMS, DEPTH_LABEL, DIFFICULTIES, SUSPICION_BANDS, suspicionBand, clamp };
+return { SCHEMA_VERSION, PROJECT, INITIAL_RUN, ITEM_IDS, ITEMS, DEPTH_LABEL, DEPTH_INFO, DIFFICULTIES, SUSPICION_BANDS, suspicionBand, clamp };
 });
 
 /* ===== src/data/puzzles.js ===== */
@@ -1827,6 +1890,7 @@ function createRun({ runId, nodeId, now, player = null }) {
   return {
     schemaVersion: SCHEMA_VERSION,
     runId,
+    startNode: nodeId, // 대사 기록을 어디서부터 보여 줄지 (새 게임: 프롤로그, 재도전: 체크포인트)
     player: player ? { surname: player.surname, given: player.given } : null,
     caseId: CASE_ID,
     nodeId,
@@ -2066,7 +2130,6 @@ class Game {
         this.log.add('evidence_granted', { runId: run.runId, evidence: e, via: choice.id });
       }
     }
-    run.choices[node.id] = { choiceId: choice.id, outcomeId: outcome.id };
     const after = { suspicion: run.suspicion, trust: { ...run.trust } };
 
     this.log.add('dialogue_choice', {
@@ -2087,6 +2150,8 @@ class Game {
       bandEntered = bandAfter;
       run.bandsShown.push(bandAfter);
     }
+    // 선택 기록: 선택 잠금과 대사 기록(백로그)에 함께 씁니다.
+    run.choices[node.id] = { choiceId: choice.id, outcomeId: outcome.id, before, after, bandEntered, removed };
     const sDelta = after.suspicion - before.suspicion;
     const rawDelta = fx.suspicionDelta || 0;
     const tone = rawDelta < 0 ? 'down' : rawDelta === 0 ? 'flat' : rawDelta <= 10 ? 'up_small' : 'up_big';
@@ -2418,6 +2483,212 @@ class Game {
 return { R, createMeta, createRun, pickOutcome, isChoiceEnabled, rewardKey, computeEnding, Game };
 });
 
+/* ===== src/data/guide.js ===== */
+__define("src/data/guide.js", function (__require) {
+/*
+ * 언스크류(UNCREW) — 용어 안내
+ * 노트·보상 화면·선택지에서 여는 "용어 안내" 창의 내용입니다.
+ * 선택 전에 정확한 수치나 숨은 기준값을 알려 주지 않도록 표현합니다. (명세 12장)
+ */
+
+const GUIDE = [
+  {
+    id: 'memory',
+    title: '기억 단서',
+    tag: '독심으로 읽은 것',
+    body: [
+      '퍼즐로 상대의 판과 나사를 해체해 읽어 낸 기억과 감정입니다. 상대가 겪었거나 믿는 내용이라, 객관적인 사실과 다를 수 있습니다.',
+      '쓰임은 세 가지입니다. 첫째, 판단의 근거가 됩니다. 어떤 대답이 거짓말로 들통나는지, 무엇을 말하면 위험한지 알려 줍니다. 둘째, 일부 선택지는 특정 단서가 있어야 열립니다. 셋째, 기억 돋보기로 가진 단서와 모순되는 대답을 찾을 수 있습니다.',
+      '한계도 있습니다. 상대 앞에 증거로 내밀 수 없고, 아는 티를 내면 의심도가 오릅니다.',
+    ],
+  },
+  {
+    id: 'evidence',
+    title: '확보 증거',
+    tag: '손에 쥔 실물',
+    body: [
+      '실제로 손에 넣은 문서입니다. 상대에게 직접 보여 줄 수 있어서, 증거가 있어야만 열리는 선택지가 있고 대개 의심도를 낮춥니다.',
+      '첫 사건의 확보 증거는 서해린이 보관한 ‘어제 전달 목록’ 사본입니다. 기억으로 목록 내용을 보았더라도, 실물이 없으면 회장 앞에 내밀 수 없습니다.',
+    ],
+  },
+  {
+    id: 'depth',
+    title: '기억의 깊이 · 표면 / 중층 / 심층',
+    tag: '난이도와 연결',
+    depthTable: true,
+    body: [
+      '한 주제의 기억은 세 겹으로 되어 있습니다. 쉬움은 표면, 보통은 표면과 중층, 어려움은 세 겹 모두를 엽니다.',
+      '깊은 단서일수록 결정적인 선택지를 엽니다. 다만 같은 효과를 얕은 단서 여러 개를 조합해 얻을 수 있는 경우도 있습니다. 어려운 퍼즐 하나와 쉬운 퍼즐 여러 개 중 무엇을 고를지가 조사 전략입니다.',
+    ],
+  },
+  {
+    id: 'reading',
+    title: '단서 카드 읽는 법',
+    tag: '어떻게 작동하나',
+    body: [
+      '판단 힌트: 이 단서가 대화에서 무엇을 뜻하는지 정리한 해설입니다. 수치에는 직접 영향을 주지 않습니다.',
+      '작동: 게임 규칙에서 실제로 연결된 곳입니다. ‘선택지를 엶’은 그 단서가 조건인 선택지가 있다는 뜻이고, ‘모순 확인’은 기억 돋보기가 그 단서로 어긋나는 대답을 표시할 수 있다는 뜻입니다.',
+      '선택지 아래의 ✓·✗ 표시는 그 선택지를 여는 조건을 지금 얼마나 갖췄는지 보여 줍니다.',
+    ],
+  },
+  {
+    id: 'focus',
+    title: '집중력과 난이도',
+    tag: '조사 자원',
+    body: [
+      '사건마다 집중력 4가 주어집니다. 쉬움 1, 보통 2, 어려움 4를 씁니다. 집중력은 조사를 시작할 때만 줄고, 각 주제는 사건마다 한 번만 조사할 수 있습니다.',
+      '퍼즐을 다 풀면 단서와 함께 난이도별 아이템을 받습니다. 실패하거나 포기한 주제에서는 받지 못합니다.',
+    ],
+  },
+  {
+    id: 'suspicion',
+    title: '의심도와 신뢰도',
+    tag: '살아남기 위한 수치',
+    body: [
+      '의심도는 조직이 나를 얼마나 의심하는지입니다. 40부터 관찰 대상, 70부터 제거 검토, 100이 되면 그 자리에서 제거됩니다. 퍼즐을 푸는 것만으로는 오르지 않고, 말과 행동으로 드러날 때 오릅니다.',
+      '서해린 신뢰도는 그녀가 나를 얼마나 믿는지입니다. 신뢰가 충분해야 그녀가 위험을 감수하고 도와줍니다.',
+      '선택지를 고르기 전에는 정확한 수치 변화를 알 수 없습니다. 고른 뒤 화면 위에 변화가 표시됩니다.',
+    ],
+  },
+  {
+    id: 'items',
+    title: '아이템',
+    tag: '퍼즐 · 대화 도구',
+    items: true,
+    body: [],
+  },
+  {
+    id: 'past',
+    title: '지난 시도에서 열람',
+    tag: '사건 재도전',
+    body: [
+      '사건을 다시 하면 지난 시도에서 본 단서도 노트에서 다시 읽을 수 있습니다. 하지만 이번 시도에서 다시 확보하기 전에는 선택지 조건으로 쓰이지 않습니다.',
+      '기억해 둔 내용을 바탕으로 대답을 고르는 것은 자유입니다.',
+    ],
+  },
+];
+
+return { GUIDE };
+});
+
+/* ===== src/core/clueInfo.js ===== */
+__define("src/core/clueInfo.js", function (__require) {
+/*
+ * 언스크류(UNCREW) — 단서가 게임 규칙에서 "어디에 작동하는지" 계산
+ *
+ * 콘텐츠 데이터(선택지 조건 requires, contradictsClues, relatedClue)를 훑어서
+ * 각 기억 단서·확보 증거가 연결된 선택지를 찾습니다. 화면은 이 결과로 '작동' 설명과 ✓/✗ 조건표를 그립니다.
+ */
+const { NODES, NODE_ORDER } = __require("src/data/case01.js");
+const { collectRefs, evaluate } = __require("src/core/conditions.js");
+
+function eachChoice(fn) {
+  for (const nodeId of NODE_ORDER) {
+    const node = NODES[nodeId];
+    for (const c of node.choices || []) fn(node, c);
+  }
+}
+
+/**
+ * 단서(또는 증거)의 작동 위치
+ * @returns {{ unlocks: {nodeId, choiceId}[], contradicts: {nodeId, choiceId}[], related: {nodeId, choiceId}[] }}
+ */
+function clueUsage(id, { evidence = false } = {}) {
+  const unlocks = [];
+  const contradicts = [];
+  const related = [];
+  eachChoice((node, c) => {
+    if (c.requires) {
+      const refs = collectRefs(c.requires);
+      if ((evidence ? refs.evidence : refs.clues).includes(id)) unlocks.push({ nodeId: node.id, choiceId: c.id });
+    }
+    if (!evidence && (c.contradictsClues || []).includes(id)) contradicts.push({ nodeId: node.id, choiceId: c.id });
+    if (!evidence && c.relatedClue === id) related.push({ nodeId: node.id, choiceId: c.id });
+  });
+  return { unlocks, contradicts, related };
+}
+
+/**
+ * 조건을 화면에 그리기 좋은 트리로 바꿉니다. 각 잎에는 지금 충족 여부(ok)가 붙습니다.
+ *   { op: 'all'|'any', items: [...] } 또는 { leaf: { clue|evidence|trust... }, ok }
+ */
+function requirementTree(cond, run) {
+  if (!cond) return null;
+  if (cond.all) return { op: 'all', ok: evaluate(cond, run), items: cond.all.map((c) => requirementTree(c, run)) };
+  if (cond.any) return { op: 'any', ok: evaluate(cond, run), items: cond.any.map((c) => requirementTree(c, run)) };
+  return { leaf: cond, ok: evaluate(cond, run) };
+}
+
+return { clueUsage, requirementTree };
+});
+
+/* ===== src/core/transcript.js ===== */
+__define("src/core/transcript.js", function (__require) {
+/*
+ * 언스크류(UNCREW) — 대사 기록(백로그)
+ *
+ * 저장된 진행 상태(지나온 노드, 고른 선택지와 결과)만으로 지금까지 화면에 나온 대사를 다시 만듭니다.
+ * 대사 원문을 저장 데이터에 따로 쌓지 않으므로 저장 용량이 늘지 않고, 새로고침 뒤에도 같은 기록이 나옵니다.
+ *
+ * 항목 형식
+ *   { kind: 'scene', nodeId }                       장면 구분
+ *   { kind: 'line', line, nodeId }                  대본 한 줄 (who/narr/card/fx 그대로)
+ *   { kind: 'choice', nodeId, choiceId, record }    내가 고른 대답 (record: 수치 변화 포함)
+ */
+const { NODES, NODE_ORDER, BAND_LINES, REMOVAL_LINES } = __require("src/data/case01.js");
+
+const TALK_TYPES = ['scene', 'dialogue'];
+
+function reactionLines(node, record) {
+  const choice = node.choices.find((c) => c.id === record.choiceId);
+  if (!choice) return [];
+  if (record.removed) return REMOVAL_LINES;
+  const outcome = choice.outcomes ? choice.outcomes.find((o) => o.id === record.outcomeId) : { reaction: choice.reaction };
+  const lines = [...(outcome?.reaction || [])];
+  if (record.bandEntered && BAND_LINES[record.bandEntered]) lines.push(...BAND_LINES[record.bandEntered]);
+  return lines;
+}
+
+/**
+ * @param run      RunState
+ * @param progress 현재 화면에서 몇 번째 줄까지 보였는지 (0부터). 지금 장면은 그 줄까지만 넣습니다.
+ */
+function buildTranscript(run, { lineIdx = Infinity } = {}) {
+  if (!run) return [];
+  const out = [];
+  const pr = run.pendingReaction;
+  // 반응을 보여 주는 중이면, 지금 위치는 반응이 속한 노드입니다. (run.nodeId는 이미 다음 노드)
+  const currentId = pr ? pr.nodeId : run.nodeId;
+  const startIdx = Math.max(0, NODE_ORDER.indexOf(run.startNode || 'PROLOGUE'));
+  // 제거로 끝났다면 그 뒤 장면은 보지 못했으므로 넣지 않습니다.
+  const removedAt = run.result?.endingId === 'END_REMOVED' ? run.result.cause?.nodeId : null;
+  const curIdx = removedAt ? NODE_ORDER.indexOf(removedAt) : NODE_ORDER.indexOf(currentId);
+
+  for (let i = startIdx; i < NODE_ORDER.length && i <= curIdx; i++) {
+    const node = NODES[NODE_ORDER[i]];
+    if (!TALK_TYPES.includes(node.type)) continue;
+    const isCurrent = i === curIdx && (!removedAt || !!pr);
+    const record = run.choices?.[node.id];
+    const lines = node.lines || [];
+    // 지금 장면의 본문을 읽는 중이면 보인 줄까지만
+    const bodyCount = isCurrent && !pr ? Math.min(lines.length, lineIdx + 1) : lines.length;
+    if (bodyCount <= 0) continue;
+    out.push({ kind: 'scene', nodeId: node.id });
+    for (let k = 0; k < bodyCount; k++) out.push({ kind: 'line', line: lines[k], nodeId: node.id });
+    if (node.type === 'dialogue' && record && (!isCurrent || pr)) {
+      out.push({ kind: 'choice', nodeId: node.id, choiceId: record.choiceId, record });
+      const rx = reactionLines(node, record);
+      // 첫 줄(0번)은 화면에서 내가 고른 대답을 말하는 줄이므로, 반응 대사는 1번부터 셉니다.
+      const rxCount = isCurrent && pr ? Math.max(0, Math.min(rx.length, lineIdx)) : rx.length;
+      for (let k = 0; k < rxCount; k++) out.push({ kind: 'line', line: rx[k], nodeId: node.id });
+    }
+  }
+  return out;
+}
+
+return { buildTranscript };
+});
+
 /* ===== src/core/solver.js ===== */
 __define("src/core/solver.js", function (__require) {
 /*
@@ -2502,6 +2773,8 @@ const ICON = {
   doc: svg('<path d="M6 3h9l4 4v14H6z"/><path d="M9 13h7M9 17h7M9 9h3"/>'),
   sound: svg('<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/>'),
   mute: svg('<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 9l5 6M22 9l-5 6"/>'),
+  log: svg('<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/>'),
+  help: svg('<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17h.01"/>'),
 };
 
 /* ---------------- 인물 실루엣 (viewBox 200×300) ---------------- */
@@ -2988,8 +3261,11 @@ __define("src/ui/app.js", function (__require) {
  * 화면: TITLE · 대화(PROLOGUE/RETURN/HAERIN_OPEN/OFFICE_ENTER/DOCUMENT_ACTION/BOSS) · 튜토리얼 · 허브 · 퍼즐 · 보상 · 결과
  * 오버레이: 노트(EVIDENCE) · 난이도 선택 · 메뉴 · 설정 · 확인창 · 테스트 패널
  */
-const { PROJECT, ITEMS, DIFFICULTIES, DEPTH_LABEL, suspicionBand } = __require("src/data/config.js");
-const { NODES, CLUES, EVIDENCE, TOPICS, TOPIC_ORDER, CHARACTERS, SPEAKER_LABEL, BAND_LINES, REMOVAL_LINES, TUTORIAL, HUB, ENDINGS, RESULT_COMMON, CASE_INFO } = __require("src/data/case01.js");
+const { PROJECT, ITEMS, DIFFICULTIES, DEPTH_LABEL, DEPTH_INFO, suspicionBand } = __require("src/data/config.js");
+const { NODES, CLUES, EVIDENCE, TOPICS, TOPIC_ORDER, CHARACTERS, SPEAKER_LABEL, BAND_LINES, REMOVAL_LINES, TUTORIAL, HUB, ENDINGS, RESULT_COMMON, CASE_INFO, SITUATION, LIFE_GOALS } = __require("src/data/case01.js");
+const { GUIDE } = __require("src/data/guide.js");
+const { clueUsage, requirementTree } = __require("src/core/clueInfo.js");
+const { buildTranscript } = __require("src/core/transcript.js");
 const { getBoard, TUTORIAL_BOARD } = __require("src/data/puzzles.js");
 const { pickHole, plateAt, hasScrew, canSelect, validDestinations, hasAnyValidMove, isBlocked, TEMP_HOLE_ID, REASONS } = __require("src/core/puzzleEngine.js");
 const { nextHint, solve } = __require("src/core/solver.js");
@@ -3125,6 +3401,76 @@ function createApp({ root, side, debugEl, shell, game }) {
     return ents.map(([id, n]) => `${ITEMS[id].name} ×${n}`).join(', ');
   }
 
+  /* =============================== 단서 설명 · 조건표 =============================== */
+
+  const SCENE_NAME = {
+    HAERIN_OPEN: '비서실 대화',
+    DOCUMENT_ACTION: '전달 목록 요청',
+    BOSS_01: '회장 대면 1',
+    BOSS_02: '회장 대면 2',
+    BOSS_03: '회장 대면 3',
+  };
+
+  function clueLabel(cid) {
+    const c = CLUES[cid];
+    if (!c.topic) return '사건 정리 단서';
+    return `${CHARACTERS[c.who].name} · ${TOPICS[c.topic].title} · ${DEPTH_LABEL[c.depth]}`;
+  }
+
+  function reqLabel(leaf) {
+    if (leaf.clue) return `기억 단서 「${clueLabel(leaf.clue)}」`;
+    if (leaf.evidence) return `확보 증거 「${EVIDENCE[leaf.evidence].name}」`;
+    if (leaf.trustAtLeast) return `${Object.keys(leaf.trustAtLeast).map((w) => CHARACTERS[w].name).join('·')}의 충분한 신뢰`;
+    if (leaf.flag) return '앞선 선택';
+    return '조건';
+  }
+
+  /** 조건을 ✓/✗ 목록으로 그립니다. 색만이 아니라 기호로도 충족 여부를 보여 줍니다. */
+  function reqHtml(tree, top = true) {
+    if (!tree) return '';
+    if (tree.leaf) return `<span class="req ${tree.ok ? 'ok' : 'no'}">${tree.ok ? '✓' : '✗'} ${esc(reqLabel(tree.leaf))}</span>`;
+    const sep = tree.op === 'all' ? '+' : '또는';
+    const inner = tree.items.map((t) => reqHtml(t, false)).join(` <span class="req-op">${sep}</span> `);
+    return top ? inner : `<span class="req-group">( ${inner} )</span>`;
+  }
+
+  function choiceRef(nodeId, choiceId) {
+    return NODES[nodeId].choices.find((c) => c.id === choiceId);
+  }
+
+  /** 단서·증거가 실제로 작동하는 곳 */
+  function workLines(id, { evidence = false } = {}) {
+    const u = clueUsage(id, { evidence });
+    const out = [];
+    for (const x of u.unlocks) {
+      const tree = requirementTree(choiceRef(x.nodeId, x.choiceId).requires, game.run);
+      out.push(`<li><b>선택지를 엶</b> · ${SCENE_NAME[x.nodeId] || NODE_LABEL[x.nodeId]}에서 새 대답이 열립니다. 필요한 조건: ${reqHtml(tree)}</li>`);
+    }
+    for (const x of u.contradicts) out.push(`<li><b>모순 확인</b> · ${SCENE_NAME[x.nodeId] || NODE_LABEL[x.nodeId]}에 이 단서와 어긋나는 대답이 있습니다. 기억 돋보기로 표시할 수 있습니다.</li>`);
+    for (const x of u.related) out.push(`<li><b>관련 표시</b> · ${SCENE_NAME[x.nodeId] || NODE_LABEL[x.nodeId]}에서 관련된 선택지 옆에 ‘관련 단서 보유’가 표시됩니다.</li>`);
+    if (!out.length) out.push(`<li>직접 열리는 선택지는 없습니다. 대화에서 무엇이 위험한지 판단하는 근거로 씁니다.</li>`);
+    return `<ul class="work">${out.join('')}</ul>`;
+  }
+
+  /** 기억 단서 카드. status: 'owned' | 'past', detail: 판단 힌트·작동까지 보일지 */
+  function clueCard(cid, { status = 'owned', detail = true, extraChips = '' } = {}) {
+    const c = CLUES[cid];
+    const depth = c.depth ? DEPTH_INFO[c.depth] : null;
+    const chips = [
+      depth ? `<span class="chip teal" title="${esc(depth.desc)}">${depth.label}</span>` : `<span class="chip gold">사건 정리</span>`,
+      `<span class="chip">${c.topic ? `${CHARACTERS[c.who].name} · ${esc(TOPICS[c.topic].title)}` : '공통 후속 단서'}</span>`,
+      status === 'past' ? '<span class="chip dim">지난 시도에서 열람 · 이번 시도 미확보</span>' : '',
+      extraChips,
+    ].join('');
+    return `<div class="note-item clue ${status === 'past' ? 'past' : ''}">
+      <div class="meta">${chips}</div>
+      <div class="clue-text">${esc(T(c.text))}</div>
+      ${depth ? `<div class="clue-depth">${depth.label}: ${esc(depth.desc)}</div>` : ''}
+      ${detail ? `<div class="clue-use"><b>판단 힌트</b>${esc(T(c.use))}</div>` : ''}
+      ${detail ? `<div class="clue-work"><b>작동</b>${status === 'past' ? '<p class="faint">이번 시도에서 다시 확보해야 조건으로 쓰입니다.</p>' : ''}${workLines(cid)}</div>` : ''}
+    </div>`;
+  }
+
   /* =============================== 렌더 진입점 =============================== */
 
   function render() {
@@ -3157,6 +3503,11 @@ function createApp({ root, side, debugEl, shell, game }) {
     if (textEl) startTyping(textEl);
     const svg = root.querySelector('svg[data-board]');
     if (svg) svg.addEventListener('click', onBoardClick);
+    const logBody = root.querySelector('[data-log-body]');
+    if (logBody && ui.overlay?.type === 'log' && !ui.overlay.scrolled) {
+      logBody.scrollTop = logBody.scrollHeight;
+      ui.overlay.scrolled = true;
+    }
     const focusEl = root.querySelector('[data-autofocus]');
     if (focusEl && ui.overlay) focusEl.focus({ preventScroll: true });
     const run = game.run;
@@ -3307,6 +3658,7 @@ function createApp({ root, side, debugEl, shell, game }) {
     if (choicesReady) bottom = choicesPanel(seq.node);
     else {
       bottom = `<div class="controls">
+        <button class="btn small ghost" data-act="log" aria-label="대사 기록">${ICON.log}기록</button>
         ${!isLast ? `<button class="btn small ghost" data-act="skip">건너뛰기</button>` : ''}
         <span class="spacer"></span>
         <button class="btn primary next" data-act="next" ${full ? '' : 'disabled'} aria-label="다음 대사">다음 ${ICON.chevron}</button>
@@ -3411,20 +3763,27 @@ function createApp({ root, side, debugEl, shell, game }) {
         const c = v.choice;
         const badges = [];
         if (!v.enabled) badges.push(`<span class="chip">${ICON.lock}${esc(c.lockHint)}</span>`);
-        if (v.related) badges.push(`<span class="chip teal">${ICON.notes}관련 단서 보유</span>`);
+        if (v.related) badges.push(`<span class="chip teal">${ICON.notes}관련 단서 보유 · ${esc(clueLabel(c.relatedClue))}</span>`);
         if (v.magnified) badges.push(`<span class="chip danger">${ICON.glass}모순: ${esc(T(CLUES[v.magnified.clueId].text))}</span>`);
         if (v.rehearsal) {
           const [t, ic, cls] = dirText[v.rehearsal];
           badges.push(`<span class="chip ${cls}">${ic}리허설: 의심도 ${t}</span>`);
         }
-        return `<button class="choice ${ui.picking && v.enabled ? 'picking' : ''} ${v.magnified ? 'contradict' : ''}" data-act="choose" data-id="${c.id}" ${v.enabled ? '' : 'disabled'}>
+        const req = c.requires ? requirementTree(c.requires, run) : null;
+        const reqLine = req ? `<span class="req-line">${v.enabled ? '<b>단서로 열린 대답</b> · 근거:' : '<b>필요</b>:'} ${reqHtml(req)}</span>` : '';
+        return `<button class="choice ${ui.picking && v.enabled ? 'picking' : ''} ${v.magnified ? 'contradict' : ''} ${req && v.enabled ? 'unlocked' : ''}" data-act="choose" data-id="${c.id}" ${v.enabled ? '' : 'disabled'}>
           <span>${esc(c.text)}</span>
           ${badges.length ? `<span class="badges">${badges.join('')}</span>` : ''}
+          ${reqLine}
         </button>`;
       })
       .join('');
     return `<div class="choices" role="group" aria-label="선택지">
-      ${items.length ? `<div class="item-bar"><span class="label">아이템</span>${items.join('')}</div>` : ''}
+      <div class="item-bar">
+        <button class="btn small ghost" data-act="log">${ICON.log}이전 대사 보기</button>
+        <button class="btn small ghost" data-act="guide">${ICON.help}용어 안내</button>
+        ${items.length ? `<span class="label">아이템</span>${items.join('')}` : ''}
+      </div>
       ${ui.picking ? `<div class="pick-banner"><span>미리 볼 선택지를 고르세요. 의심도의 방향만 표시합니다.</span><button class="btn small ghost" data-act="cancel-pick">취소</button></div>` : ''}
       ${buttons}
     </div>`;
@@ -3570,7 +3929,7 @@ function createApp({ root, side, debugEl, shell, game }) {
     const statusChip = (t) => {
       const a = run.topicAttempts[t.id];
       if (!a) return `<span class="chip teal">미조사</span>`;
-      if (a.status === 'completed') return `<span class="chip gold">완료 · ${DIFFICULTIES[a.difficulty].name}</span>`;
+      if (a.status === 'completed') return `<span class="chip gold">완료 · ${[1, 2, 3].filter((n) => n <= DIFFICULTIES[a.difficulty].depth).map((n) => DEPTH_LABEL[n]).join('·')}</span>`;
       if (a.status === 'abandoned') return `<span class="chip dim">${ICON.flag}포기</span>`;
       return `<span class="chip warn">진행 중</span>`;
     };
@@ -3601,6 +3960,8 @@ function createApp({ root, side, debugEl, shell, game }) {
           <span class="eyebrow">D-30 · 회장의 첫 질문 직전</span>
           <h2>${HUB.title}</h2>
           <p>${esc(HUB.desc)}</p>
+          <p class="case-goal"><b>이번 사건 목표</b> ${esc(SITUATION.caseGoal.goal)} 기억을 열어 단서를 모은 뒤, 회장의 질문에 그 단서를 근거로 대답합니다.</p>
+          <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn small ghost" data-act="guide">${ICON.help}기억 단서·깊이란?</button><button class="btn small ghost" data-act="log">${ICON.log}대사 기록</button></div>
           <div class="focus-row">${ICON.focus}<span>집중력 <b>${run.focus}</b> / 4</span>${pips(run.focus, 4)}</div>
         </div>
         ${card('HAERIN')}
@@ -3642,7 +4003,8 @@ function createApp({ root, side, debugEl, shell, game }) {
         </div>
         <div class="sheet-body" role="radiogroup">
           ${opts}
-          <p class="legend">집중력은 조사 시작을 확정할 때만 줄어듭니다. 해체를 마치면 아이템을 확정 지급합니다. 이 주제는 이번 사건에서 한 번만 조사할 수 있습니다.</p>
+          <dl class="depth-table compact">${[1, 2, 3].map((n) => `<dt>${DEPTH_INFO[n].label}</dt><dd>${esc(DEPTH_INFO[n].desc)}</dd>`).join('')}</dl>
+          <p class="legend">난이도가 높을수록 더 깊은 기억까지 열립니다. 집중력은 조사 시작을 확정할 때만 줄어듭니다. 해체를 마치면 아이템을 확정 지급합니다. 이 주제는 이번 사건에서 한 번만 조사할 수 있습니다.</p>
         </div>
         <div class="sheet-foot">
           <button class="btn" data-act="close">취소</button>
@@ -3902,10 +4264,11 @@ function createApp({ root, side, debugEl, shell, game }) {
     const t = TOPICS[r.topicId];
     const d = DIFFICULTIES[r.difficulty];
     const clueCards = r.clues
-      .map((cid) => {
-        const c = CLUES[cid];
-        return `<div class="note-item"><div class="meta"><span class="chip teal">${DEPTH_LABEL[c.depth]}</span><span class="chip">기억 단서</span>${r.newClues.includes(cid) ? '' : '<span class="chip dim">이미 확보</span>'}</div>${esc(T(c.text))}</div>`;
-      })
+      .map((cid) => clueCard(cid, { extraChips: r.newClues.includes(cid) ? '' : '<span class="chip dim">이미 확보</span>' }))
+      .join('');
+    const itemCards = Object.entries(r.items)
+      .filter(([, n]) => n > 0)
+      .map(([id, n]) => `<div class="note-item"><div class="meta"><b>${ITEMS[id].name} ×${n}</b><span class="chip">${ITEMS[id].context === 'puzzle' ? '퍼즐에서 사용' : '대화 선택지에서 사용'}</span></div><div class="muted" style="font-size:13px">${esc(ITEMS[id].desc)}</div></div>`)
       .join('');
     return `<section class="screen reward-screen">
       ${hud(run)}
@@ -3913,9 +4276,13 @@ function createApp({ root, side, debugEl, shell, game }) {
         <span class="eyebrow">해체 완료 · ${d.name}</span>
         <h2 class="big-title">${CHARACTERS[t.target].name} · ${esc(t.title)}</h2>
         <p class="fragment">${esc(T(t.fragment))}</p>
-        <div class="section"><h3>얻은 기억 단서 ${r.clues.length}개</h3>${clueCards}
-          <p class="legend">기억 단서는 상대가 겪거나 믿는 내용입니다. 실물 증거와는 다릅니다.</p></div>
-        <div class="section"><h3>지급 아이템</h3><div class="note-item">${itemList(r.items)}</div></div>
+        <div class="explain">
+          <p><b>기억 단서</b>는 상대가 겪었거나 믿는 내용입니다. 회장 앞에 증거로 내밀 수는 없지만, 어떤 대답이 위험한지 판단하게 해 주고 일부 대답을 열어 줍니다.</p>
+          <p>${d.name} 난이도라서 ${DEPTH_INFO[d.depth].label}까지 열었습니다. ${[1, 2, 3].map((n) => `<b>${DEPTH_INFO[n].label}</b> ${esc(DEPTH_INFO[n].desc)}`).join(' · ')}</p>
+          <button class="btn small ghost" data-act="guide">${ICON.help}용어 안내 자세히 보기</button>
+        </div>
+        <div class="section"><h3>얻은 기억 단서 ${r.clues.length}개</h3>${clueCards}</div>
+        <div class="section"><h3>지급 아이템</h3>${itemCards || '<div class="note-item muted">없음</div>'}</div>
         <div class="section"><h3>남은 집중력</h3><div class="focus-row">${pips(run.focus, 4)}<b>${run.focus}</b> / 4</div></div>
       </div></div>
       <div class="foot-actions" style="grid-template-columns:1fr"><button class="btn primary" data-act="close-reward">멈춘 시간으로 돌아가기</button></div>
@@ -3970,7 +4337,8 @@ function createApp({ root, side, debugEl, shell, game }) {
         ${end.preview ? `<div class="preview"><span class="eyebrow">D-29 예고</span>${esc(end.preview)}</div>` : ''}
         ${removed ? '' : `<p class="legend">${leftItems.length ? `남은 아이템: ${leftItems.map(([id, n]) => `${ITEMS[id].name} ×${n}`).join(', ')}. ` : ''}${esc(RESULT_COMMON.nextCaseNote)}</p>`}
       </div></div>
-      <div class="foot-actions">
+      <div class="foot-actions three">
+        <button class="btn" data-act="log">${ICON.log}대사 기록</button>
         <button class="btn" data-act="to-title">타이틀로</button>
         <button class="btn primary" data-act="retry-case-now">사건 다시 하기</button>
       </div>
@@ -3979,9 +4347,24 @@ function createApp({ root, side, debugEl, shell, game }) {
 
   /* =============================== 노트 =============================== */
 
+  function situationContent({ compact = false } = {}) {
+    const S = SITUATION;
+    const timeline = S.firstLife.map((e) => `<li><b>${esc(e.when)}</b> ${esc(e.text)}</li>`).join('');
+    return `<div class="note-group situation">
+      <h4>이번 사건 · ${esc(S.caseGoal.title)}</h4>
+      <div class="note-item evidence"><b>${esc(S.caseGoal.goal)}</b><ol class="steps">${S.caseGoal.steps.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></div>
+      <h4>이번 삶의 목표</h4>
+      <div class="note-item"><ol class="steps">${LIFE_GOALS.map((g) => `<li>${esc(g)}</li>`).join('')}</ol></div>
+      ${compact ? '' : `<h4>지금 나의 처지</h4><div class="note-item"><ul class="steps">${S.now.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>
+      <h4>해결 방향</h4><div class="note-item"><ul class="steps">${S.way.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>
+      <h4>첫 번째 삶의 기록</h4><div class="note-item"><ul class="timeline">${timeline}</ul></div>`}
+    </div>`;
+  }
+
   function notesContent(tab, { all = false } = {}) {
     const run = game.run;
     const sections = [];
+    if (all || tab === 'situation') sections.push(situationContent({ compact: all }));
     if (all || tab === 'clues') {
       const groups = TOPIC_ORDER.map((tid) => {
         const t = TOPICS[tid];
@@ -3989,10 +4372,8 @@ function createApp({ root, side, debugEl, shell, game }) {
           .map((cid) => {
             const c = CLUES[cid];
             const st = game.clueStatus(cid);
-            const depth = `<span class="chip teal">${DEPTH_LABEL[c.depth]}</span>`;
-            if (st === 'owned') return `<div class="note-item"><div class="meta">${depth}<span class="chip">이번 시도 확보</span></div>${esc(T(c.text))}</div>`;
-            if (st === 'past') return `<div class="note-item past"><div class="meta">${depth}<span class="chip dim">지난 시도에서 열람 · 이번 시도 미확보</span></div>${esc(T(c.text))}</div>`;
-            return `<div class="note-item unknown">${DEPTH_LABEL[c.depth]} · 아직 보지 못한 기억</div>`;
+            if (st === 'owned' || st === 'past') return clueCard(cid, { status: st, detail: !all });
+            return `<div class="note-item unknown"><b>${DEPTH_INFO[c.depth].label}</b> · 아직 보지 못한 기억 <span class="faint">(${esc(DEPTH_INFO[c.depth].desc)})</span></div>`;
           })
           .join('');
         const a = run?.topicAttempts[tid];
@@ -4003,13 +4384,13 @@ function createApp({ root, side, debugEl, shell, game }) {
       const endHtml =
         end === 'unknown'
           ? ''
-          : `<div class="note-group"><h4>사건 정리</h4><div class="note-item ${end === 'past' ? 'past' : ''}"><div class="meta"><span class="chip gold">공통 후속 단서</span>${end === 'past' ? '<span class="chip dim">지난 시도에서 열람 · 이번 시도 미확보</span>' : ''}</div>${esc(T(CLUES.C_CASE_01_END.text))}</div></div>`;
-      sections.push(`<p class="legend">기억 단서는 독심으로 읽은 내용입니다. 상대가 믿는 것이지, 객관적 사실이나 실물 증거는 아닙니다.</p>${groups}${endHtml}`);
+          : `<div class="note-group"><h4>사건 정리</h4>${clueCard('C_CASE_01_END', { status: end, detail: !all })}</div>`;
+      sections.push(`<p class="legend">기억 단서는 독심으로 읽은 내용입니다. 상대가 믿는 것이지, 객관적 사실이나 실물 증거는 아닙니다. 카드의 <b>판단 힌트</b>는 대화에서의 의미, <b>작동</b>은 게임 규칙상 연결된 곳입니다.</p>${groups}${endHtml}`);
     }
     if (all || tab === 'evidence') {
       const items = Object.values(EVIDENCE)
         .map((e) => {
-          if (run?.evidence.includes(e.id)) return `<div class="note-item evidence"><div class="meta"><span class="chip gold">${ICON.doc}확보 증거</span></div><b>${esc(e.name)}</b><div>${esc(e.text)}</div><div class="muted" style="font-size:13px">${esc(e.note)}</div></div>`;
+          if (run?.evidence.includes(e.id)) return `<div class="note-item evidence clue"><div class="meta"><span class="chip gold">${ICON.doc}확보 증거</span></div><b>${esc(e.name)}</b><div>${esc(e.text)}</div><div class="muted" style="font-size:13px">${esc(e.note)}</div>${all ? '' : `<div class="clue-work"><b>작동</b>${workLines(e.id, { evidence: true })}</div>`}</div>`;
           if (game.meta.evidenceSeen.includes(e.id)) return `<div class="note-item past"><div class="meta"><span class="chip dim">지난 시도에서 확보 · 이번 시도 미확보</span></div><b>${esc(e.name)}</b></div>`;
           return `<div class="note-item unknown">아직 확보한 실물 증거가 없습니다.</div>`;
         })
@@ -4030,13 +4411,14 @@ function createApp({ root, side, debugEl, shell, game }) {
 
   function notesSheet(o) {
     const tabs = [
+      ['situation', '상황'],
       ['clues', '기억 단서'],
       ['evidence', '확보 증거'],
       ['people', '인물'],
     ];
     return `<div class="overlay" data-act="overlay-bg">
       <div class="sheet" role="dialog" aria-modal="true" aria-label="노트" style="height:88%">
-        <div class="sheet-head"><h2>노트</h2><button class="icon-btn" data-act="close" aria-label="닫기" data-autofocus>${ICON.close}</button></div>
+        <div class="sheet-head"><h2>노트</h2><span style="display:flex;gap:6px"><button class="btn small ghost" data-act="guide">${ICON.help}용어 안내</button><button class="icon-btn" data-act="close" aria-label="닫기" data-autofocus>${ICON.close}</button></span></div>
         <div class="tabs" role="tablist">${tabs.map(([id, label]) => `<button class="tab" role="tab" aria-selected="${o.tab === id}" data-act="notes-tab" data-id="${id}">${label}</button>`).join('')}</div>
         <div class="sheet-body">${notesContent(o.tab)}</div>
       </div>
@@ -4060,6 +4442,8 @@ function createApp({ root, side, debugEl, shell, game }) {
         <div class="sheet-head"><h2>메뉴</h2><button class="icon-btn" data-act="close" aria-label="닫기" data-autofocus>${ICON.close}</button></div>
         <div class="menu-list">
           ${inGame ? `<button class="btn" data-act="notes">${ICON.notes}노트</button>` : ''}
+          ${inGame ? `<button class="btn" data-act="log">${ICON.log}대사 기록</button>` : ''}
+          <button class="btn" data-act="guide">${ICON.help}용어 안내</button>
           <button class="btn" data-act="settings">설정</button>
           ${inGame && !INTRO_NODES.includes(game.run.nodeId) ? `<button class="btn" data-act="retry-case">${ICON.restart}사건 처음부터 다시</button>` : ''}
           ${inGame ? `<button class="btn" data-act="to-title">타이틀로 나가기</button>` : ''}
@@ -4103,9 +4487,73 @@ function createApp({ root, side, debugEl, shell, game }) {
     </div>`;
   }
 
+  function guideSheet() {
+    const sections = GUIDE.map((g) => {
+      let extra = '';
+      if (g.depthTable) {
+        extra = `<dl class="depth-table">${[1, 2, 3]
+          .map((n) => `<dt>${DEPTH_INFO[n].label}</dt><dd>${esc(DEPTH_INFO[n].desc)}<br><span class="faint">${Object.values(DIFFICULTIES).filter((d) => d.depth >= n).map((d) => d.name).join('·')}에서 열림</span></dd>`)
+          .join('')}</dl>`;
+      }
+      if (g.items) {
+        extra = Object.values(ITEMS)
+          .map((it) => `<div class="note-item"><div class="meta"><b>${it.name}</b><span class="chip">${it.context === 'puzzle' ? '퍼즐' : '대화'}</span></div><div class="muted" style="font-size:13px">${esc(it.desc)}</div></div>`)
+          .join('');
+      }
+      return `<section class="guide-sec" id="guide-${g.id}"><h3>${esc(g.title)} <span class="chip">${esc(g.tag)}</span></h3>${g.body.map((b) => `<p>${esc(b)}</p>`).join('')}${extra}</section>`;
+    }).join('');
+    return `<div class="overlay" data-act="overlay-bg">
+      <div class="sheet" role="dialog" aria-modal="true" aria-label="용어 안내" style="height:88%">
+        <div class="sheet-head"><h2>용어 안내</h2><button class="icon-btn" data-act="close" aria-label="닫기" data-autofocus>${ICON.close}</button></div>
+        <div class="sheet-body guide-body">${sections}</div>
+      </div>
+    </div>`;
+  }
+
+  function logLineHtml(line) {
+    if (line.card && line.list) return `<div class="log-card"><b>${esc(line.card)}</b><ol>${line.list.map((g) => `<li>${esc(T(g))}</li>`).join('')}</ol></div>`;
+    if (line.card) return `<div class="log-card"><b>${esc(line.card)}</b> · ${esc(T(line.sub || ''))}</div>`;
+    if (line.fx === 'blackout') return `<p class="log-narr">— 암전 — ${esc(T(line.narr || ''))}</p>`;
+    if (line.who) {
+      const p = lineParts(line);
+      return `<div class="log-line ${p.whoCls || ''}"><b class="log-who">${esc(p.who)}</b><p class="${p.cls}">${esc(p.text)}</p></div>`;
+    }
+    return `<p class="log-narr">${esc(T(line.narr))}</p>`;
+  }
+
+  function logSheet() {
+    const run = game.run;
+    const entries = buildTranscript(run, { lineIdx: ui.lineIdx });
+    const body = entries
+      .map((e) => {
+        if (e.kind === 'scene') return `<div class="log-scene">${esc(SCENE_NAME[e.nodeId] || NODE_LABEL[e.nodeId] || e.nodeId)}</div>`;
+        if (e.kind === 'choice') {
+          const ch = choiceRef(e.nodeId, e.choiceId);
+          const r = e.record;
+          const ds = r.before && r.after ? r.after.suspicion - r.before.suspicion : null;
+          const dt = r.before && r.after ? r.after.trust.HAERIN - r.before.trust.HAERIN : null;
+          const chips = [
+            ds !== null ? `<span class="chip ${ds > 0 ? 'danger' : ds < 0 ? 'teal' : ''}">의심도 ${r.before.suspicion} → ${r.after.suspicion}</span>` : '',
+            dt ? `<span class="chip ${dt > 0 ? 'gold' : 'warn'}">서해린 신뢰 ${r.before.trust.HAERIN} → ${r.after.trust.HAERIN}</span>` : '',
+          ].join('');
+          return `<div class="log-choice"><span class="chip gold">내 대답</span><p>${esc(ch.text)}</p>${chips ? `<div class="meta">${chips}</div>` : ''}</div>`;
+        }
+        return logLineHtml(e.line);
+      })
+      .join('');
+    return `<div class="overlay" data-act="overlay-bg">
+      <div class="sheet" role="dialog" aria-modal="true" aria-label="대사 기록" style="height:88%">
+        <div class="sheet-head"><div><h2>대사 기록</h2><p class="legend">이번 시도에서 지금까지 나온 대사입니다. 읽기만 할 수 있습니다.</p></div><button class="icon-btn" data-act="close" aria-label="닫기" data-autofocus>${ICON.close}</button></div>
+        <div class="sheet-body log-body" data-log-body>${body || '<p class="muted">아직 기록된 대사가 없습니다.</p>'}</div>
+      </div>
+    </div>`;
+  }
+
   function overlayMarkup() {
     const o = ui.overlay;
     if (!o) return '';
+    if (o.type === 'guide') return guideSheet();
+    if (o.type === 'log') return logSheet();
     if (o.type === 'notes') return notesSheet(o);
     if (o.type === 'difficulty') return difficultySheet(o);
     if (o.type === 'menu') return menuSheet();
@@ -4222,15 +4670,26 @@ function createApp({ root, side, debugEl, shell, game }) {
       render();
     },
     notes: () => {
-      ui.overlay = { type: 'notes', tab: 'clues' };
+      ui.overlay = { type: 'notes', tab: ui.notesTab || 'situation' };
       render();
     },
     'notes-tab': (el) => {
+      ui.notesTab = el.dataset.id;
       ui.overlay = { type: 'notes', tab: el.dataset.id };
       render();
     },
+    log: () => {
+      reveal();
+      ui.overlay = { type: 'log', back: ui.overlay && ui.overlay.type !== 'menu' ? ui.overlay : null, scrolled: false };
+      render();
+    },
+    guide: () => {
+      ui.overlay = { type: 'guide', back: ui.overlay && ui.overlay.type !== 'menu' ? ui.overlay : null };
+      render();
+    },
     close: () => {
-      ui.overlay = null;
+      // 다른 창에서 연 용어 안내·대사 기록은 닫으면 원래 창으로 돌아갑니다.
+      ui.overlay = ui.overlay?.back || null;
       render();
     },
     'overlay-bg': (el, e) => {

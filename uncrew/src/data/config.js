@@ -48,6 +48,13 @@ export const ITEMS = {
 
 export const DEPTH_LABEL = { 1: '표면', 2: '중층', 3: '심층' };
 
+/** 기억 단서의 깊이 (명세 7장) */
+export const DEPTH_INFO = {
+  1: { label: '표면', desc: '상대가 겉으로 내세우는 명분, 이미 알고 있는 사실' },
+  2: { label: '중층', desc: '상대가 감추고 있는 행동과 구체적인 기억' },
+  3: { label: '심층', desc: '그 행동을 선택하게 만든 욕망과 두려움, 숨은 전제' },
+};
+
 export const DIFFICULTIES = {
   easy: {
     id: 'easy',

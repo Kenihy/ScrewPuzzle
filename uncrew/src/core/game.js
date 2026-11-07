@@ -58,6 +58,7 @@ export function createRun({ runId, nodeId, now, player = null }) {
   return {
     schemaVersion: SCHEMA_VERSION,
     runId,
+    startNode: nodeId, // 대사 기록을 어디서부터 보여 줄지 (새 게임: 프롤로그, 재도전: 체크포인트)
     player: player ? { surname: player.surname, given: player.given } : null,
     caseId: CASE_ID,
     nodeId,
@@ -297,7 +298,6 @@ export class Game {
         this.log.add('evidence_granted', { runId: run.runId, evidence: e, via: choice.id });
       }
     }
-    run.choices[node.id] = { choiceId: choice.id, outcomeId: outcome.id };
     const after = { suspicion: run.suspicion, trust: { ...run.trust } };
 
     this.log.add('dialogue_choice', {
@@ -318,6 +318,8 @@ export class Game {
       bandEntered = bandAfter;
       run.bandsShown.push(bandAfter);
     }
+    // 선택 기록: 선택 잠금과 대사 기록(백로그)에 함께 씁니다.
+    run.choices[node.id] = { choiceId: choice.id, outcomeId: outcome.id, before, after, bandEntered, removed };
     const sDelta = after.suspicion - before.suspicion;
     const rawDelta = fx.suspicionDelta || 0;
     const tone = rawDelta < 0 ? 'down' : rawDelta === 0 ? 'flat' : rawDelta <= 10 ? 'up_small' : 'up_big';
